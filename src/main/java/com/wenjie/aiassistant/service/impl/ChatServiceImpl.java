@@ -10,4 +10,9 @@ public class ChatServiceImpl implements ChatService {
     public String test() {
         return "AI assistant is running";
     }
+
+    @Override
+    public String chat(String message) {
+        return "收到你的问题：" + message;
+    }
 }
