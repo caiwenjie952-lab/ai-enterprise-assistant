@@ -1,3 +1,10 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: ai-enterprise-assistant
+
+ai:
+  provider: mock
+  model: mock-chat
