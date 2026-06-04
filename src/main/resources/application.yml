@@ -6,5 +6,7 @@ spring:
     name: ai-enterprise-assistant
 
 ai:
-  provider: mock
-  model: mock-chat
+  provider: deepseek
+  base-url: https://api.deepseek.com
+  api-key: ${DEEPSEEK_API_KEY}
+  model: deepseek-v4-flash

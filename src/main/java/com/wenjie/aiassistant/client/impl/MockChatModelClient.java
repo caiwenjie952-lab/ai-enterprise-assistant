@@ -3,10 +3,12 @@ package com.wenjie.aiassistant.client.impl;
 import com.wenjie.aiassistant.client.ChatModelClient;
 import com.wenjie.aiassistant.config.AiProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "ai", name = "provider", havingValue = "mock", matchIfMissing = true)
 public class MockChatModelClient implements ChatModelClient {
 
     private final AiProperties aiProperties;
