@@ -42,11 +42,11 @@ public class DeepSeekChatModelClient implements ChatModelClient {
         if (response == null
                 || response.getChoices() == null
                 || response.getChoices().isEmpty()
-                || response.getChoices().get(0).getMessage() == null) {
+                || response.getChoices().getFirst().getMessage() == null) {
             return "模型暂无回复";
         }
 
-        return response.getChoices().get(0).getMessage().getContent();
+        return response.getChoices().getFirst().getMessage().getContent();
     }
 
     @Data
