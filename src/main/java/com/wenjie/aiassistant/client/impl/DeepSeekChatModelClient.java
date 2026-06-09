@@ -5,6 +5,7 @@ import com.wenjie.aiassistant.config.AiProperties;
 import com.wenjie.aiassistant.exception.BusinessException;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.util.List;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "ai", name = "provider", havingValue = "deepseek")
@@ -22,7 +24,12 @@ public class DeepSeekChatModelClient implements ChatModelClient {
 
     @Override
     public String chat(String message) {
+        long startTime = System.currentTimeMillis();
+
         try {
+            log.info("开始调用 DeepSeek 模型，baseUrl={}，model={}",
+                    aiProperties.getBaseUrl(), aiProperties.getModel());
+
             RestClient restClient = RestClient.builder()
                     .baseUrl(aiProperties.getBaseUrl())
                     .defaultHeader("Authorization", "Bearer " + aiProperties.getApiKey())
@@ -50,13 +57,20 @@ public class DeepSeekChatModelClient implements ChatModelClient {
                 throw new BusinessException(502, "模型返回内容为空");
             }
 
+            long cost = System.currentTimeMillis() - startTime;
+            log.info("DeepSeek 模型调用完成，耗时={}ms", cost);
+
             return response.getChoices().get(0).getMessage().getContent();
 
         } catch (BusinessException e) {
             throw e;
         } catch (RestClientException e) {
+            long cost = System.currentTimeMillis() - startTime;
+            log.error("DeepSeek 模型服务调用失败，耗时={}ms，错误={}", cost, e.getMessage(), e);
             throw new BusinessException(502, "模型服务调用失败，请检查 API Key、模型名称或网络连接");
         } catch (Exception e) {
+            long cost = System.currentTimeMillis() - startTime;
+            log.error("DeepSeek 模型调用异常，耗时={}ms，错误={}", cost, e.getMessage(), e);
             throw new BusinessException(500, "模型调用异常，请稍后再试");
         }
     }

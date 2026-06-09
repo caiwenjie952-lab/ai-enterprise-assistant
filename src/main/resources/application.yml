@@ -1,5 +1,5 @@
 server:
-  port: 8081
+  port: 8080
 
 spring:
   application:
@@ -10,3 +10,7 @@ ai:
   base-url: https://api.deepseek.com
   api-key: ${DEEPSEEK_API_KEY}
   model: deepseek-v4-flash
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level traceId=%X{traceId} %logger{36} - %msg%n"
