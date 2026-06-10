@@ -17,6 +17,9 @@ public class MockChatModelClient implements ChatModelClient {
     public String chat(String message) {
         return "当前模型提供方：" + aiProperties.getProvider()
                 + "，模型名称：" + aiProperties.getModel()
+                + "，temperature=" + aiProperties.getTemperature()
+                + "，maxTokens=" + aiProperties.getMaxTokens()
+                + "，systemPrompt=" + aiProperties.getSystemPrompt()
                 + "，收到你的问题：" + message;
     }
 }

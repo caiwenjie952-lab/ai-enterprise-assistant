@@ -1,5 +1,6 @@
 package com.wenjie.aiassistant.client.impl;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.wenjie.aiassistant.client.ChatModelClient;
 import com.wenjie.aiassistant.config.AiProperties;
 import com.wenjie.aiassistant.exception.BusinessException;
@@ -27,8 +28,11 @@ public class DeepSeekChatModelClient implements ChatModelClient {
         long startTime = System.currentTimeMillis();
 
         try {
-            log.info("开始调用 DeepSeek 模型，baseUrl={}，model={}",
-                    aiProperties.getBaseUrl(), aiProperties.getModel());
+            log.info("开始调用 DeepSeek 模型，baseUrl={}，model={}，temperature={}，maxTokens={}",
+                    aiProperties.getBaseUrl(),
+                    aiProperties.getModel(),
+                    aiProperties.getTemperature(),
+                    aiProperties.getMaxTokens());
 
             RestClient restClient = RestClient.builder()
                     .baseUrl(aiProperties.getBaseUrl())
@@ -38,8 +42,10 @@ public class DeepSeekChatModelClient implements ChatModelClient {
 
             DeepSeekChatRequest request = new DeepSeekChatRequest();
             request.setModel(aiProperties.getModel());
+            request.setTemperature(aiProperties.getTemperature());
+            request.setMaxTokens(aiProperties.getMaxTokens());
             request.setMessages(List.of(
-                    new DeepSeekMessage("system", "你是一个专业、简洁、可靠的企业 AI 助手。"),
+                    new DeepSeekMessage("system", aiProperties.getSystemPrompt()),
                     new DeepSeekMessage("user", message)
             ));
 
@@ -78,7 +84,13 @@ public class DeepSeekChatModelClient implements ChatModelClient {
     @Data
     static class DeepSeekChatRequest {
         private String model;
+
         private List<DeepSeekMessage> messages;
+
+        private Double temperature;
+
+        @JsonProperty("max_tokens")
+        private Integer maxTokens;
     }
 
     @Data

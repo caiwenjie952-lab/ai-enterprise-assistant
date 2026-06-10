@@ -28,4 +28,19 @@ public class AiProperties {
      * 模型名称，例如：deepseek-v4-flash
      */
     private String model;
+
+    /**
+     * 系统提示词
+     */
+    private String systemPrompt;
+
+    /**
+     * 温度参数，控制回答随机性
+     */
+    private Double temperature;
+
+    /**
+     * 最大输出 token 数
+     */
+    private Integer maxTokens;
 }
