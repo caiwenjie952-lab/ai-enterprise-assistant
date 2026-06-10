@@ -3,6 +3,7 @@ package com.wenjie.aiassistant.client.impl;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.wenjie.aiassistant.client.ChatModelClient;
 import com.wenjie.aiassistant.config.AiProperties;
+import com.wenjie.aiassistant.dto.ChatMessageDTO;
 import com.wenjie.aiassistant.exception.BusinessException;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -24,15 +26,16 @@ public class DeepSeekChatModelClient implements ChatModelClient {
     private final AiProperties aiProperties;
 
     @Override
-    public String chat(String message) {
+    public String chat(List<ChatMessageDTO> messages) {
         long startTime = System.currentTimeMillis();
 
         try {
-            log.info("开始调用 DeepSeek 模型，baseUrl={}，model={}，temperature={}，maxTokens={}",
+            log.info("开始调用 DeepSeek 模型，baseUrl={}，model={}，temperature={}，maxTokens={}，messages={}",
                     aiProperties.getBaseUrl(),
                     aiProperties.getModel(),
                     aiProperties.getTemperature(),
-                    aiProperties.getMaxTokens());
+                    aiProperties.getMaxTokens(),
+                    messages.size());
 
             RestClient restClient = RestClient.builder()
                     .baseUrl(aiProperties.getBaseUrl())
@@ -44,10 +47,15 @@ public class DeepSeekChatModelClient implements ChatModelClient {
             request.setModel(aiProperties.getModel());
             request.setTemperature(aiProperties.getTemperature());
             request.setMaxTokens(aiProperties.getMaxTokens());
-            request.setMessages(List.of(
-                    new DeepSeekMessage("system", aiProperties.getSystemPrompt()),
-                    new DeepSeekMessage("user", message)
-            ));
+
+            List<DeepSeekMessage> deepSeekMessages = new ArrayList<>();
+            deepSeekMessages.add(new DeepSeekMessage("system", aiProperties.getSystemPrompt()));
+
+            for (ChatMessageDTO message : messages) {
+                deepSeekMessages.add(new DeepSeekMessage(message.getRole(), message.getContent()));
+            }
+
+            request.setMessages(deepSeekMessages);
 
             DeepSeekChatResponse response = restClient.post()
                     .uri("/chat/completions")
