@@ -2,6 +2,7 @@ package com.wenjie.aiassistant.controller;
 
 import com.wenjie.aiassistant.common.Result;
 import com.wenjie.aiassistant.dto.ChatRequest;
+import com.wenjie.aiassistant.dto.ChatResponse;
 import com.wenjie.aiassistant.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class ChatController {
     }
 
     @PostMapping
-    public Result<String> chat(@Valid @RequestBody ChatRequest request) {
-        return Result.success(chatService.chat(request.getMessage()));
+    public Result<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
+        return Result.success(chatService.chat(request));
     }
 }
