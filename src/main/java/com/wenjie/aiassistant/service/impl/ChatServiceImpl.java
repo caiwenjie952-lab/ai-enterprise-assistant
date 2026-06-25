@@ -45,22 +45,23 @@ public class ChatServiceImpl implements ChatService {
         long startTime = System.currentTimeMillis();
 
         try {
-            List<ChatMessageDTO> historyMessages = conversationMemoryService.getMessages(conversationId);
+            int maxHistoryMessages = aiProperties.getMaxHistoryMessages() == null ? 10 : aiProperties.getMaxHistoryMessages();
+
+            List<ChatMessageDTO> contextMessages = conversationMemoryService.getRecentMessages(conversationId, maxHistoryMessages);
 
             ChatMessageDTO currentUserMessage = new ChatMessageDTO("user", userMessage);
-            historyMessages.add(currentUserMessage);
 
-            String reply = chatModelClient.chat(historyMessages);
+            contextMessages.add(currentUserMessage);
 
-            conversationMemoryService.addMessages(conversationId, List.of(
-                    currentUserMessage,
-                    new ChatMessageDTO("assistant", reply)
-            ));
+            log.info("本次模型调用上下文消息数={}，maxHistoryMessages={}", contextMessages.size(), maxHistoryMessages);
+
+            String reply = chatModelClient.chat(contextMessages);
+
+            conversationMemoryService.addMessages(conversationId, List.of(currentUserMessage, new ChatMessageDTO("assistant", reply)));
 
             long cost = System.currentTimeMillis() - startTime;
 
-            log.info("聊天模型调用成功，conversationId={}，历史消息数={}，耗时={}ms",
-                    conversationId, historyMessages.size(), cost);
+            log.info("聊天模型调用成功，conversationId={}，本次上下文消息数={}，耗时={}ms", conversationId, contextMessages.size(), cost);
 
             return new ChatResponse(
                     conversationId,

@@ -43,4 +43,9 @@ public class AiProperties {
      * 最大输出 token 数
      */
     private Integer maxTokens;
+
+    /**
+     * 每次调用模型时最多携带的历史消息条数
+     */
+    private Integer maxHistoryMessages;
 }

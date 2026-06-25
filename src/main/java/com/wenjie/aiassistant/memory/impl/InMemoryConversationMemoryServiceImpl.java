@@ -32,4 +32,17 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     public void clear(String conversationId) {
         memory.remove(conversationId);
     }
+
+    @Override
+    public List<ChatMessageDTO> getRecentMessages(String conversationId, int limit) {
+        List<ChatMessageDTO> messages = memory.getOrDefault(conversationId, new ArrayList<>());
+
+        if (limit <= 0 || messages.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        int fromIndex = Math.max(messages.size() - limit, 0);
+
+        return new ArrayList<>(messages.subList(fromIndex, messages.size()));
+    }
 }

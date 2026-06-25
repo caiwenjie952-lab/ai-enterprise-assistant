@@ -25,4 +25,9 @@ public interface ConversationMemoryService {
      * 清空某个会话
      */
     void clear(String conversationId);
+
+    /**
+     * 获取最近 N 条消息
+     */
+    List<ChatMessageDTO> getRecentMessages(String conversationId, int limit);
 }
