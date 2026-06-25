@@ -13,7 +13,8 @@ ai:
   system-prompt: 你是一个专业、简洁、可靠的企业 AI 助手。回答要准确，优先使用简洁中文。
   temperature: 0.7
   max-tokens: 1024
-  max-history-messages: 2
+  max-history-messages: 4
+  summary-trigger-messages: 6
 
 logging:
   pattern:

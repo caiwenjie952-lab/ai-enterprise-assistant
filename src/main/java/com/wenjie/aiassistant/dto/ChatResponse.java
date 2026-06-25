@@ -28,4 +28,9 @@ public class ChatResponse {
      * 模型名称
      */
     private String model;
+
+    /**
+     * 当前会话摘要
+     */
+    private String summary;
 }

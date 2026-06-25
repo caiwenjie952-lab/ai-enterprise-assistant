@@ -48,4 +48,9 @@ public class AiProperties {
      * 每次调用模型时最多携带的历史消息条数
      */
     private Integer maxHistoryMessages;
+
+    /**
+     * 触发会话摘要的历史消息数量阈值
+     */
+    private Integer summaryTriggerMessages;
 }

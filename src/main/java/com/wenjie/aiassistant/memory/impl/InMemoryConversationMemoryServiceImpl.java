@@ -13,9 +13,23 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
 
     private final ConcurrentHashMap<String, List<ChatMessageDTO>> memory = new ConcurrentHashMap<>();
 
+    private final ConcurrentHashMap<String, String> summaryMemory = new ConcurrentHashMap<>();
+
     @Override
     public List<ChatMessageDTO> getMessages(String conversationId) {
         return new ArrayList<>(memory.getOrDefault(conversationId, new ArrayList<>()));
+    }
+
+    @Override
+    public List<ChatMessageDTO> getRecentMessages(String conversationId, int limit) {
+        List<ChatMessageDTO> messages = memory.getOrDefault(conversationId, new ArrayList<>());
+
+        if (limit <= 0 || messages.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        int fromIndex = Math.max(messages.size() - limit, 0);
+        return new ArrayList<>(messages.subList(fromIndex, messages.size()));
     }
 
     @Override
@@ -31,18 +45,21 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     @Override
     public void clear(String conversationId) {
         memory.remove(conversationId);
+        summaryMemory.remove(conversationId);
     }
 
     @Override
-    public List<ChatMessageDTO> getRecentMessages(String conversationId, int limit) {
-        List<ChatMessageDTO> messages = memory.getOrDefault(conversationId, new ArrayList<>());
+    public String getSummary(String conversationId) {
+        return summaryMemory.getOrDefault(conversationId, "");
+    }
 
-        if (limit <= 0 || messages.isEmpty()) {
-            return new ArrayList<>();
-        }
+    @Override
+    public void updateSummary(String conversationId, String summary) {
+        summaryMemory.put(conversationId, summary);
+    }
 
-        int fromIndex = Math.max(messages.size() - limit, 0);
-
-        return new ArrayList<>(messages.subList(fromIndex, messages.size()));
+    @Override
+    public int countMessages(String conversationId) {
+        return memory.getOrDefault(conversationId, new ArrayList<>()).size();
     }
 }
