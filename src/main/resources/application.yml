@@ -13,9 +13,14 @@ ai:
   system-prompt: 你是一个专业、简洁、可靠的企业 AI 助手。回答要准确，优先使用简洁中文。
   temperature: 0.7
   max-tokens: 1024
-  max-history-messages: 4
-  summary-trigger-messages: 6
-  summary-max-messages: 6
+  #聊天时只带最近 10 条消息
+  max-history-messages: 10
+  #历史达到 20 条后开始摘要
+  summary-trigger-messages: 20
+  #之后每新增 10 条消息再摘要一次
+  summary-interval-messages: 10
+  #每次摘要最多看最近 20 条消息
+  summary-max-messages: 20
 
 logging:
   pattern:

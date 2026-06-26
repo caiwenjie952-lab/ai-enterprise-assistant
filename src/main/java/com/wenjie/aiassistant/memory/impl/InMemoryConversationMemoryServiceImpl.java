@@ -15,6 +15,8 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
 
     private final ConcurrentHashMap<String, String> summaryMemory = new ConcurrentHashMap<>();
 
+    private final ConcurrentHashMap<String, Integer> lastSummaryMessageCountMemory = new ConcurrentHashMap<>();
+
     @Override
     public List<ChatMessageDTO> getMessages(String conversationId) {
         return new ArrayList<>(memory.getOrDefault(conversationId, new ArrayList<>()));
@@ -46,6 +48,7 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     public void clear(String conversationId) {
         memory.remove(conversationId);
         summaryMemory.remove(conversationId);
+        lastSummaryMessageCountMemory.remove(conversationId);
     }
 
     @Override
@@ -61,5 +64,15 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     @Override
     public int countMessages(String conversationId) {
         return memory.getOrDefault(conversationId, new ArrayList<>()).size();
+    }
+
+    @Override
+    public int getLastSummaryMessageCount(String conversationId) {
+        return lastSummaryMessageCountMemory.getOrDefault(conversationId, 0);
+    }
+
+    @Override
+    public void updateLastSummaryMessageCount(String conversationId, int messageCount) {
+        lastSummaryMessageCountMemory.put(conversationId, messageCount);
     }
 }

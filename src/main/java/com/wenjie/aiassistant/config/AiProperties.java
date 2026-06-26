@@ -57,4 +57,9 @@ public class AiProperties {
      * 每次生成摘要时最多纳入的消息数
      */
     private Integer summaryMaxMessages;
+
+    /**
+     * 两次摘要之间至少新增的消息数量
+     */
+    private Integer summaryIntervalMessages;
 }

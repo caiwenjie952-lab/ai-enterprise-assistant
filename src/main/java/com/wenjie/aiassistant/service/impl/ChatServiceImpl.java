@@ -53,9 +53,6 @@ public class ChatServiceImpl implements ChatService {
                     ? 10
                     : aiProperties.getMaxHistoryMessages();
 
-            int summaryTriggerMessages = aiProperties.getSummaryTriggerMessages() == null
-                    ? 20
-                    : aiProperties.getSummaryTriggerMessages();
 
             String summary = conversationMemoryService.getSummary(conversationId);
 
@@ -88,7 +85,21 @@ public class ChatServiceImpl implements ChatService {
 
             int totalMessages = conversationMemoryService.countMessages(conversationId);
 
-            if (totalMessages >= summaryTriggerMessages) {
+            int summaryTriggerMessages = aiProperties.getSummaryTriggerMessages() == null
+                    ? 20
+                    : aiProperties.getSummaryTriggerMessages();
+
+            int summaryIntervalMessages = aiProperties.getSummaryIntervalMessages() == null
+                    ? 10
+                    : aiProperties.getSummaryIntervalMessages();
+
+            int lastSummaryMessageCount =
+                    conversationMemoryService.getLastSummaryMessageCount(conversationId);
+
+            boolean needSummary = totalMessages >= summaryTriggerMessages
+                    && totalMessages - lastSummaryMessageCount >= summaryIntervalMessages;
+
+            if (needSummary) {
                 int summaryMaxMessages = aiProperties.getSummaryMaxMessages() == null
                         ? 20
                         : aiProperties.getSummaryMaxMessages();
@@ -97,10 +108,17 @@ public class ChatServiceImpl implements ChatService {
                         conversationMemoryService.getRecentMessages(conversationId, summaryMaxMessages);
 
                 String newSummary = conversationSummaryService.summarize(summary, summaryMessages);
+
                 conversationMemoryService.updateSummary(conversationId, newSummary);
+                conversationMemoryService.updateLastSummaryMessageCount(conversationId, totalMessages);
+
                 summary = newSummary;
 
-                log.info("会话摘要已更新，conversationId={}，totalMessages={}", conversationId, totalMessages);
+                log.info("会话摘要已更新，conversationId={}，totalMessages={}，lastSummaryMessageCount={}，summaryMessages={}",
+                        conversationId, totalMessages, lastSummaryMessageCount, summaryMessages.size());
+            } else {
+                log.info("本轮不需要更新摘要，conversationId={}，totalMessages={}，lastSummaryMessageCount={}，summaryTriggerMessages={}，summaryIntervalMessages={}",
+                        conversationId, totalMessages, lastSummaryMessageCount, summaryTriggerMessages, summaryIntervalMessages);
             }
 
             long cost = System.currentTimeMillis() - startTime;

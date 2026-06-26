@@ -30,4 +30,14 @@ public interface ConversationMemoryService {
      * 获取会话消息数量
      */
     int countMessages(String conversationId);
+
+    /**
+     * 获取上一次生成摘要时的消息数量
+     */
+    int getLastSummaryMessageCount(String conversationId);
+
+    /**
+     * 更新上一次生成摘要时的消息数量
+     */
+    void updateLastSummaryMessageCount(String conversationId, int messageCount);
 }
