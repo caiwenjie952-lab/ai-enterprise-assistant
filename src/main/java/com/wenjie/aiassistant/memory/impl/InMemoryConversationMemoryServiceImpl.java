@@ -5,8 +5,10 @@ import com.wenjie.aiassistant.memory.ConversationMemoryService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class InMemoryConversationMemoryServiceImpl implements ConversationMemoryService {
@@ -15,7 +17,9 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
 
     private final ConcurrentHashMap<String, String> summaryMemory = new ConcurrentHashMap<>();
 
-    private final ConcurrentHashMap<String, Integer> lastSummaryMessageCountMemory = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Integer> lastSummaryMessageIndexMemory = new ConcurrentHashMap<>();
+
+    private final ConcurrentHashMap<String, AtomicInteger> messageIndexMemory = new ConcurrentHashMap<>();
 
     @Override
     public List<ChatMessageDTO> getMessages(String conversationId) {
@@ -30,8 +34,29 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
             return new ArrayList<>();
         }
 
-        int fromIndex = Math.max(messages.size() - limit, 0);
-        return new ArrayList<>(messages.subList(fromIndex, messages.size()));
+        List<ChatMessageDTO> sortedMessages = messages.stream()
+                .sorted(Comparator.comparing(ChatMessageDTO::getMessageIndex))
+                .toList();
+
+        int fromIndex = Math.max(sortedMessages.size() - limit, 0);
+
+        return new ArrayList<>(sortedMessages.subList(fromIndex, sortedMessages.size()));
+    }
+
+    @Override
+    public List<ChatMessageDTO> getMessagesAfterIndex(String conversationId, int messageIndex, int limit) {
+        if (limit <= 0) {
+            return new ArrayList<>();
+        }
+
+        List<ChatMessageDTO> messages = memory.getOrDefault(conversationId, new ArrayList<>());
+
+        return messages.stream()
+                .filter(message -> message.getMessageIndex() != null)
+                .filter(message -> message.getMessageIndex() > messageIndex)
+                .sorted(Comparator.comparing(ChatMessageDTO::getMessageIndex))
+                .limit(limit)
+                .toList();
     }
 
     @Override
@@ -48,7 +73,8 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     public void clear(String conversationId) {
         memory.remove(conversationId);
         summaryMemory.remove(conversationId);
-        lastSummaryMessageCountMemory.remove(conversationId);
+        lastSummaryMessageIndexMemory.remove(conversationId);
+        messageIndexMemory.remove(conversationId);
     }
 
     @Override
@@ -67,12 +93,52 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     }
 
     @Override
-    public int getLastSummaryMessageCount(String conversationId) {
-        return lastSummaryMessageCountMemory.getOrDefault(conversationId, 0);
+    public int nextMessageIndex(String conversationId) {
+        return messageIndexMemory
+                .computeIfAbsent(conversationId, key -> new AtomicInteger(0))
+                .incrementAndGet();
     }
 
     @Override
-    public void updateLastSummaryMessageCount(String conversationId, int messageCount) {
-        lastSummaryMessageCountMemory.put(conversationId, messageCount);
+    public int getCurrentMessageIndex(String conversationId) {
+        return messageIndexMemory
+                .getOrDefault(conversationId, new AtomicInteger(0))
+                .get();
+    }
+
+    @Override
+    public int getLastSummaryMessageIndex(String conversationId) {
+        return lastSummaryMessageIndexMemory.getOrDefault(conversationId, 0);
+    }
+
+    @Override
+    public void updateLastSummaryMessageIndex(String conversationId, int messageIndex) {
+        lastSummaryMessageIndexMemory.put(conversationId, messageIndex);
+    }
+
+    @Override
+    public void trimMessages(String conversationId, int limit) {
+        if (limit <= 0) {
+            return;
+        }
+
+        List<ChatMessageDTO> messages = memory.get(conversationId);
+
+        if (messages == null || messages.size() <= limit) {
+            return;
+        }
+
+        List<ChatMessageDTO> sortedMessages = messages.stream()
+                .filter(message -> message.getMessageIndex() != null)
+                .sorted(Comparator.comparing(ChatMessageDTO::getMessageIndex))
+                .toList();
+
+        int fromIndex = Math.max(sortedMessages.size() - limit, 0);
+
+        List<ChatMessageDTO> recentMessages = new ArrayList<>(
+                sortedMessages.subList(fromIndex, sortedMessages.size())
+        );
+
+        memory.put(conversationId, recentMessages);
     }
 }

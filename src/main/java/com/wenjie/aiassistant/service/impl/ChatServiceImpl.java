@@ -53,18 +53,35 @@ public class ChatServiceImpl implements ChatService {
                     ? 10
                     : aiProperties.getMaxHistoryMessages();
 
+            int summaryTriggerMessages = aiProperties.getSummaryTriggerMessages() == null
+                    ? 20
+                    : aiProperties.getSummaryTriggerMessages();
+
+            int summaryIntervalMessages = aiProperties.getSummaryIntervalMessages() == null
+                    ? 10
+                    : aiProperties.getSummaryIntervalMessages();
+
+            int summaryMaxMessages = aiProperties.getSummaryMaxMessages() == null
+                    ? 20
+                    : aiProperties.getSummaryMaxMessages();
+
+            int maxMemoryMessages = aiProperties.getMaxMemoryMessages() == null
+                    ? 50
+                    : aiProperties.getMaxMemoryMessages();
 
             String summary = conversationMemoryService.getSummary(conversationId);
 
             List<ChatMessageDTO> recentMessages =
                     conversationMemoryService.getRecentMessages(conversationId, maxHistoryMessages);
 
-            ChatMessageDTO currentUserMessage = new ChatMessageDTO("user", userMessage);
+            int userMessageIndex = conversationMemoryService.nextMessageIndex(conversationId);
+            ChatMessageDTO currentUserMessage = new ChatMessageDTO(userMessageIndex, "user", userMessage);
 
             List<ChatMessageDTO> contextMessages = new ArrayList<>();
 
             if (summary != null && !summary.isBlank()) {
                 contextMessages.add(new ChatMessageDTO(
+                        0,
                         "system",
                         "以下是本次会话的长期摘要，请结合它理解用户上下文：" + summary
                 ));
@@ -78,53 +95,60 @@ public class ChatServiceImpl implements ChatService {
 
             String reply = chatModelClient.chat(contextMessages);
 
+            int assistantMessageIndex = conversationMemoryService.nextMessageIndex(conversationId);
+            ChatMessageDTO assistantMessage = new ChatMessageDTO(assistantMessageIndex, "assistant", reply);
+
             conversationMemoryService.addMessages(conversationId, List.of(
                     currentUserMessage,
-                    new ChatMessageDTO("assistant", reply)
+                    assistantMessage
             ));
 
-            int totalMessages = conversationMemoryService.countMessages(conversationId);
+            int currentMessageIndex = conversationMemoryService.getCurrentMessageIndex(conversationId);
 
-            int summaryTriggerMessages = aiProperties.getSummaryTriggerMessages() == null
-                    ? 20
-                    : aiProperties.getSummaryTriggerMessages();
+            int lastSummaryMessageIndex =
+                    conversationMemoryService.getLastSummaryMessageIndex(conversationId);
 
-            int summaryIntervalMessages = aiProperties.getSummaryIntervalMessages() == null
-                    ? 10
-                    : aiProperties.getSummaryIntervalMessages();
-
-            int lastSummaryMessageCount =
-                    conversationMemoryService.getLastSummaryMessageCount(conversationId);
-
-            boolean needSummary = totalMessages >= summaryTriggerMessages
-                    && totalMessages - lastSummaryMessageCount >= summaryIntervalMessages;
+            boolean needSummary = currentMessageIndex >= summaryTriggerMessages
+                    && currentMessageIndex - lastSummaryMessageIndex >= summaryIntervalMessages;
 
             if (needSummary) {
-                int summaryMaxMessages = aiProperties.getSummaryMaxMessages() == null
-                        ? 20
-                        : aiProperties.getSummaryMaxMessages();
-
                 List<ChatMessageDTO> summaryMessages =
-                        conversationMemoryService.getRecentMessages(conversationId, summaryMaxMessages);
+                        conversationMemoryService.getMessagesAfterIndex(
+                                conversationId,
+                                lastSummaryMessageIndex,
+                                summaryMaxMessages
+                        );
 
                 String newSummary = conversationSummaryService.summarize(summary, summaryMessages);
 
                 conversationMemoryService.updateSummary(conversationId, newSummary);
-                conversationMemoryService.updateLastSummaryMessageCount(conversationId, totalMessages);
+                conversationMemoryService.updateLastSummaryMessageIndex(conversationId, currentMessageIndex);
 
                 summary = newSummary;
 
-                log.info("会话摘要已更新，conversationId={}，totalMessages={}，lastSummaryMessageCount={}，summaryMessages={}",
-                        conversationId, totalMessages, lastSummaryMessageCount, summaryMessages.size());
+                log.info("会话摘要已更新，conversationId={}，currentMessageIndex={}，lastSummaryMessageIndex={}，summaryMessages={}",
+                        conversationId,
+                        currentMessageIndex,
+                        lastSummaryMessageIndex,
+                        summaryMessages.size());
             } else {
-                log.info("本轮不需要更新摘要，conversationId={}，totalMessages={}，lastSummaryMessageCount={}，summaryTriggerMessages={}，summaryIntervalMessages={}",
-                        conversationId, totalMessages, lastSummaryMessageCount, summaryTriggerMessages, summaryIntervalMessages);
+                log.info("本轮不需要更新摘要，conversationId={}，currentMessageIndex={}，lastSummaryMessageIndex={}，summaryTriggerMessages={}，summaryIntervalMessages={}",
+                        conversationId,
+                        currentMessageIndex,
+                        lastSummaryMessageIndex,
+                        summaryTriggerMessages,
+                        summaryIntervalMessages);
             }
+
+            conversationMemoryService.trimMessages(conversationId, maxMemoryMessages);
 
             long cost = System.currentTimeMillis() - startTime;
 
-            log.info("聊天模型调用成功，conversationId={}，本次上下文消息数={}，总历史消息数={}，耗时={}ms",
-                    conversationId, contextMessages.size(), totalMessages, cost);
+            log.info("聊天模型调用成功，conversationId={}，本次上下文消息数={}，当前消息序号={}，耗时={}ms",
+                    conversationId,
+                    contextMessages.size(),
+                    currentMessageIndex,
+                    cost);
 
             return new ChatResponse(
                     conversationId,

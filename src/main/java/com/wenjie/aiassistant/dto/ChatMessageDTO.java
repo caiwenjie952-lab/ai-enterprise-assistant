@@ -8,6 +8,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatMessageDTO {
+    /**
+     * 消息序号，同一个 conversationId 内递增
+     */
+    private Integer messageIndex;
 
     /**
      * 消息角色：user / assistant / system
@@ -18,4 +22,6 @@ public class ChatMessageDTO {
      * 消息内容
      */
     private String content;
+
+
 }

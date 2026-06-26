@@ -62,4 +62,9 @@ public class AiProperties {
      * 两次摘要之间至少新增的消息数量
      */
     private Integer summaryIntervalMessages;
+
+    /**
+     * 内存中每个会话最多保留的消息数量
+     */
+    private Integer maxMemoryMessages;
 }

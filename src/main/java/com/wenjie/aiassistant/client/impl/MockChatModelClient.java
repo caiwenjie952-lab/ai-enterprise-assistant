@@ -21,7 +21,7 @@ public class MockChatModelClient implements ChatModelClient {
         ChatMessageDTO lastUserMessage = messages.stream()
                 .filter(message -> "user".equals(message.getRole()))
                 .reduce((first, second) -> second)
-                .orElse(new ChatMessageDTO("user", ""));
+                .orElse(new ChatMessageDTO(0, "user", ""));
 
         return "当前模型提供方：" + aiProperties.getProvider()
                 + "，模型名称：" + aiProperties.getModel()
