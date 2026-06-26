@@ -15,6 +15,7 @@ ai:
   max-tokens: 1024
   max-history-messages: 4
   summary-trigger-messages: 6
+  summary-max-messages: 6
 
 logging:
   pattern:

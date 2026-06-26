@@ -53,4 +53,8 @@ public class AiProperties {
      * 触发会话摘要的历史消息数量阈值
      */
     private Integer summaryTriggerMessages;
+    /**
+     * 每次生成摘要时最多纳入的消息数
+     */
+    private Integer summaryMaxMessages;
 }

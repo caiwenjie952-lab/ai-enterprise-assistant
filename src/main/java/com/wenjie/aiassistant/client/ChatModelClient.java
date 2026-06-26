@@ -8,9 +8,11 @@ public interface ChatModelClient {
 
     /**
      * 调用聊天模型
-     *
-     * @param messages 对话消息列表
-     * @return 模型回复
      */
     String chat(List<ChatMessageDTO> messages);
+
+    /**
+     * 调用模型生成会话摘要
+     */
+    String summarize(String oldSummary, List<ChatMessageDTO> messages);
 }

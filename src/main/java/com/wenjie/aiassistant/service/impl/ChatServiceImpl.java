@@ -89,8 +89,14 @@ public class ChatServiceImpl implements ChatService {
             int totalMessages = conversationMemoryService.countMessages(conversationId);
 
             if (totalMessages >= summaryTriggerMessages) {
-                List<ChatMessageDTO> allMessages = conversationMemoryService.getMessages(conversationId);
-                String newSummary = conversationSummaryService.summarize(summary, allMessages);
+                int summaryMaxMessages = aiProperties.getSummaryMaxMessages() == null
+                        ? 20
+                        : aiProperties.getSummaryMaxMessages();
+
+                List<ChatMessageDTO> summaryMessages =
+                        conversationMemoryService.getRecentMessages(conversationId, summaryMaxMessages);
+
+                String newSummary = conversationSummaryService.summarize(summary, summaryMessages);
                 conversationMemoryService.updateSummary(conversationId, newSummary);
                 summary = newSummary;
 

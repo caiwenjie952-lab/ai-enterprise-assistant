@@ -28,4 +28,10 @@ public class MockChatModelClient implements ChatModelClient {
                 + "，历史消息数：" + messages.size()
                 + "，收到你的问题：" + lastUserMessage.getContent();
     }
+
+    @Override
+    public String summarize(String oldSummary, List<ChatMessageDTO> messages) {
+        return "Mock摘要：当前已有摘要=" + oldSummary
+                + "，本次压缩消息数=" + messages.size();
+    }
 }
