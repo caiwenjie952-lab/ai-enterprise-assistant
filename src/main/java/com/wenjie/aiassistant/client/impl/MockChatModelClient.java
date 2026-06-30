@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 @Component
 @RequiredArgsConstructor
@@ -33,5 +34,20 @@ public class MockChatModelClient implements ChatModelClient {
     public String summarize(String oldSummary, List<ChatMessageDTO> messages) {
         return "Mock摘要：当前已有摘要=" + oldSummary
                 + "，本次压缩消息数=" + messages.size();
+    }
+
+    @Override
+    public String streamChat(List<ChatMessageDTO> messages, Consumer<String> chunkConsumer) {
+        String reply = chat(messages);
+
+        StringBuilder fullReply = new StringBuilder();
+
+        for (int i = 0; i < reply.length(); i++) {
+            String chunk = String.valueOf(reply.charAt(i));
+            fullReply.append(chunk);
+            chunkConsumer.accept(chunk);
+        }
+
+        return fullReply.toString();
     }
 }

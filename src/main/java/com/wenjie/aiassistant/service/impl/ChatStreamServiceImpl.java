@@ -99,23 +99,7 @@ public class ChatStreamServiceImpl implements ChatStreamService {
             // 先发一个 start 事件，告诉前端 conversationId
             sendEvent(emitter, "start", conversationId);
 
-            // Day 16：伪流式，先拿完整 reply
-            String reply = chatModelClient.chat(contextMessages);
-
-            StringBuilder fullReply = new StringBuilder();
-
-            // 模拟逐字输出
-            for (int i = 0; i < reply.length(); i++) {
-                String chunk = String.valueOf(reply.charAt(i));
-                fullReply.append(chunk);
-
-                sendEvent(emitter, "message", chunk);
-
-                // 模拟打字速度
-                sleep(20);
-            }
-
-            String finalReply = fullReply.toString();
+            String finalReply = chatModelClient.streamChat(contextMessages, chunk -> sendEvent(emitter, "message", chunk));
 
             int assistantMessageIndex = conversationMemoryService.nextMessageIndex(conversationId);
             ChatMessageDTO assistantMessage = new ChatMessageDTO(assistantMessageIndex, "assistant", finalReply);
@@ -190,11 +174,4 @@ public class ChatStreamServiceImpl implements ChatStreamService {
         }
     }
 
-    private void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
 }

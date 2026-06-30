@@ -1,6 +1,8 @@
 package com.wenjie.aiassistant.client.impl;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wenjie.aiassistant.client.ChatModelClient;
 import com.wenjie.aiassistant.config.AiProperties;
 import com.wenjie.aiassistant.dto.ChatMessageDTO;
@@ -9,13 +11,18 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Slf4j
 @Component
@@ -24,6 +31,8 @@ import java.util.List;
 public class DeepSeekChatModelClient implements ChatModelClient {
 
     private final AiProperties aiProperties;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public String chat(List<ChatMessageDTO> messages) {
@@ -47,6 +56,7 @@ public class DeepSeekChatModelClient implements ChatModelClient {
             request.setModel(aiProperties.getModel());
             request.setTemperature(aiProperties.getTemperature());
             request.setMaxTokens(aiProperties.getMaxTokens());
+            request.setStream(false);
 
             List<DeepSeekMessage> deepSeekMessages = new ArrayList<>();
             deepSeekMessages.add(new DeepSeekMessage("system", aiProperties.getSystemPrompt()));
@@ -66,15 +76,15 @@ public class DeepSeekChatModelClient implements ChatModelClient {
             if (response == null
                     || response.getChoices() == null
                     || response.getChoices().isEmpty()
-                    || response.getChoices().get(0).getMessage() == null
-                    || response.getChoices().get(0).getMessage().getContent() == null) {
+                    || response.getChoices().getFirst().getMessage() == null
+                    || response.getChoices().getFirst().getMessage().getContent() == null) {
                 throw new BusinessException(502, "模型返回内容为空");
             }
 
             long cost = System.currentTimeMillis() - startTime;
             log.info("DeepSeek 模型调用完成，耗时={}ms", cost);
 
-            return response.getChoices().get(0).getMessage().getContent();
+            return response.getChoices().getFirst().getMessage().getContent();
 
         } catch (BusinessException e) {
             throw e;
@@ -141,6 +151,7 @@ public class DeepSeekChatModelClient implements ChatModelClient {
                         """),
                     new DeepSeekMessage("user", conversationText.toString())
             ));
+            request.setStream(true);
 
             DeepSeekChatResponse response = restClient.post()
                     .uri("/chat/completions")
@@ -151,15 +162,15 @@ public class DeepSeekChatModelClient implements ChatModelClient {
             if (response == null
                     || response.getChoices() == null
                     || response.getChoices().isEmpty()
-                    || response.getChoices().get(0).getMessage() == null
-                    || response.getChoices().get(0).getMessage().getContent() == null) {
+                    || response.getChoices().getFirst().getMessage() == null
+                    || response.getChoices().getFirst().getMessage().getContent() == null) {
                 throw new BusinessException(502, "模型摘要返回内容为空");
             }
 
             long cost = System.currentTimeMillis() - startTime;
             log.info("DeepSeek 摘要生成完成，耗时={}ms", cost);
 
-            return response.getChoices().get(0).getMessage().getContent();
+            return response.getChoices().getFirst().getMessage().getContent();
 
         } catch (BusinessException e) {
             throw e;
@@ -174,6 +185,127 @@ public class DeepSeekChatModelClient implements ChatModelClient {
         }
     }
 
+    @Override
+    public String streamChat(List<ChatMessageDTO> messages, Consumer<String> chunkConsumer) {
+        long startTime = System.currentTimeMillis();
+
+        StringBuilder fullReply = new StringBuilder();
+
+        try {
+            log.info("开始调用 DeepSeek 原生流式接口，model={}，messages={}",
+                    aiProperties.getModel(),
+                    messages == null ? 0 : messages.size());
+
+            RestClient restClient = RestClient.builder()
+                    .baseUrl(aiProperties.getBaseUrl())
+                    .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + aiProperties.getApiKey())
+                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .build();
+
+            List<DeepSeekMessage> deepSeekMessages = new ArrayList<>();
+
+            if (aiProperties.getSystemPrompt() != null && !aiProperties.getSystemPrompt().isBlank()) {
+                deepSeekMessages.add(new DeepSeekMessage("system", aiProperties.getSystemPrompt()));
+            }
+
+            if (messages != null) {
+                for (ChatMessageDTO message : messages) {
+                    deepSeekMessages.add(new DeepSeekMessage(message.getRole(), message.getContent()));
+                }
+            }
+
+            DeepSeekChatRequest request = new DeepSeekChatRequest();
+            request.setModel(aiProperties.getModel());
+            request.setMessages(deepSeekMessages);
+            request.setTemperature(aiProperties.getTemperature());
+            request.setMaxTokens(aiProperties.getMaxTokens());
+            request.setStream(true);
+
+            restClient.post()
+                    .uri("/chat/completions")
+                    .accept(MediaType.TEXT_EVENT_STREAM)
+                    .body(request)
+                    .exchange((httpRequest, httpResponse) -> {
+                        try (BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(httpResponse.getBody(), StandardCharsets.UTF_8))) {
+
+                            String line;
+
+                            while ((line = reader.readLine()) != null) {
+                                if (line.isBlank()) {
+                                    continue;
+                                }
+
+                                if (!line.startsWith("data:")) {
+                                    continue;
+                                }
+
+                                String data = line.substring("data:".length()).trim();
+
+                                if ("[DONE]".equals(data)) {
+                                    break;
+                                }
+
+                                String content = parseStreamContent(data);
+
+                                if (content != null && !content.isEmpty()) {
+                                    fullReply.append(content);
+                                    chunkConsumer.accept(content);
+                                }
+                            }
+
+                            return null;
+                        }
+                    });
+
+            long cost = System.currentTimeMillis() - startTime;
+
+            log.info("DeepSeek 原生流式调用完成，回复长度={}，耗时={}ms",
+                    fullReply.length(),
+                    cost);
+
+            return fullReply.toString();
+
+        } catch (RestClientException e) {
+            long cost = System.currentTimeMillis() - startTime;
+            log.error("DeepSeek 原生流式调用失败，耗时={}ms，错误={}", cost, e.getMessage(), e);
+            throw new BusinessException(502, "模型流式服务调用失败，请检查 API Key、模型名称或网络连接");
+        } catch (Exception e) {
+            long cost = System.currentTimeMillis() - startTime;
+            log.error("DeepSeek 原生流式调用异常，耗时={}ms，错误={}", cost, e.getMessage(), e);
+            throw new BusinessException(500, "模型流式调用异常，请稍后再试");
+        }
+    }
+
+    private String parseStreamContent(String data) {
+        try {
+            JsonNode root = objectMapper.readTree(data);
+
+            JsonNode choices = root.get("choices");
+
+            if (choices == null || !choices.isArray() || choices.isEmpty()) {
+                return "";
+            }
+
+            JsonNode delta = choices.get(0).get("delta");
+
+            if (delta == null) {
+                return "";
+            }
+
+            JsonNode content = delta.get("content");
+
+            if (content == null || content.isNull()) {
+                return "";
+            }
+
+            return content.asText();
+        } catch (Exception e) {
+            log.warn("解析 DeepSeek 流式响应失败，data={}", data, e);
+            return "";
+        }
+    }
+
     @Data
     static class DeepSeekChatRequest {
         private String model;
@@ -184,6 +316,8 @@ public class DeepSeekChatModelClient implements ChatModelClient {
 
         @JsonProperty("max_tokens")
         private Integer maxTokens;
+
+        private Boolean stream;
     }
 
     @Data
