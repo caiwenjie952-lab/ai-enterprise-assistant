@@ -151,7 +151,7 @@ public class DeepSeekChatModelClient implements ChatModelClient {
                         """),
                     new DeepSeekMessage("user", conversationText.toString())
             ));
-            request.setStream(true);
+            request.setStream(false);
 
             DeepSeekChatResponse response = restClient.post()
                     .uri("/chat/completions")
