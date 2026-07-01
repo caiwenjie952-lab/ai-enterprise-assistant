@@ -151,6 +151,30 @@ h3 {
     font-weight: 700;
 }
 
+.title-card {
+    display: grid;
+    gap: 7px;
+    min-height: 70px;
+    padding: 12px;
+    border: 1px solid rgba(15, 139, 126, 0.20);
+    border-radius: 8px;
+    background: rgba(15, 139, 126, 0.07);
+}
+
+.title-card span {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.title-card strong {
+    overflow: hidden;
+    color: var(--teal-dark);
+    font-size: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 input,
 textarea {
     width: 100%;

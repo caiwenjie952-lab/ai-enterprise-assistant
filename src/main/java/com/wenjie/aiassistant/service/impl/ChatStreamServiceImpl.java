@@ -1,5 +1,6 @@
 package com.wenjie.aiassistant.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wenjie.aiassistant.client.ChatModelClient;
 import com.wenjie.aiassistant.context.ChatContext;
 import com.wenjie.aiassistant.context.ChatContextBuilder;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -25,6 +27,8 @@ public class ChatStreamServiceImpl implements ChatStreamService {
     private final ChatContextBuilder chatContextBuilder;
 
     private final ConversationLifecycleService conversationLifecycleService;
+
+    private final ObjectMapper objectMapper;
 
     @Override
     public SseEmitter streamChat(ChatRequest request) {
@@ -53,6 +57,7 @@ public class ChatStreamServiceImpl implements ChatStreamService {
 
             ConversationLifecycleResult result = conversationLifecycleService.afterReply(chatContext, finalReply);
 
+            sendEvent(emitter, "conversation", toConversationEventData(chatContext, result));
             sendEvent(emitter, "summary", result.getSummary() == null ? "" : result.getSummary());
             sendEvent(emitter, "done", chatContext.getConversationId());
             emitter.complete();
@@ -74,6 +79,17 @@ public class ChatStreamServiceImpl implements ChatStreamService {
             } finally {
                 emitter.complete();
             }
+        }
+    }
+
+    private String toConversationEventData(ChatContext chatContext, ConversationLifecycleResult result) {
+        try {
+            return objectMapper.writeValueAsString(Map.of(
+                    "conversationId", chatContext.getConversationId(),
+                    "title", result.getTitle() == null ? "新会话" : result.getTitle()
+            ));
+        } catch (Exception e) {
+            throw new RuntimeException("Conversation event json build failed", e);
         }
     }
 

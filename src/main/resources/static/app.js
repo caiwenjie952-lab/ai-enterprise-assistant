@@ -1,5 +1,6 @@
 const endpointInput = document.querySelector("#endpointInput");
 const conversationInput = document.querySelector("#conversationInput");
+const conversationTitleText = document.querySelector("#conversationTitleText");
 const healthBtn = document.querySelector("#healthBtn");
 const loadBtn = document.querySelector("#loadBtn");
 const newBtn = document.querySelector("#newBtn");
@@ -22,6 +23,7 @@ const clearEventsBtn = document.querySelector("#clearEventsBtn");
 const promptChips = document.querySelectorAll(".prompt-chip");
 
 const storageKey = "ai-assistant-stream-lab-conversation-id";
+const titleStorageKey = "ai-assistant-stream-lab-conversation-title";
 
 let abortController = null;
 let activeBubble = null;
@@ -35,6 +37,7 @@ let renderQueue = [];
 let renderTimer = 0;
 
 conversationInput.value = localStorage.getItem(storageKey) || "";
+conversationTitleText.textContent = localStorage.getItem(titleStorageKey) || "新会话";
 refreshConfig();
 
 chatForm.addEventListener("submit", (event) => {
@@ -251,6 +254,11 @@ function handleSseEvent(event) {
         return;
     }
 
+    if (event.name === "conversation") {
+        updateConversationInfo(event.data);
+        return;
+    }
+
     if (event.name === "done") {
         setConversationId(event.data);
         setStatus("收尾中", "live");
@@ -371,6 +379,22 @@ function setConversationId(conversationId) {
     localStorage.setItem(storageKey, conversationId);
 }
 
+function setConversationTitle(title) {
+    const nextTitle = title && title.trim() ? title.trim() : "新会话";
+    conversationTitleText.textContent = nextTitle;
+    localStorage.setItem(titleStorageKey, nextTitle);
+}
+
+function updateConversationInfo(data) {
+    try {
+        const conversation = JSON.parse(data);
+        setConversationId(conversation.conversationId);
+        setConversationTitle(conversation.title);
+    } catch (error) {
+        addEvent("error", `conversation 事件解析失败：${error.message}`);
+    }
+}
+
 function removeEmptyState() {
     const empty = messages.querySelector(".empty-state");
 
@@ -467,6 +491,7 @@ async function loadConversation() {
             messages.replaceChildren();
             data.messages.forEach((message) => appendMessage(message.role, message.content));
             summaryText.textContent = data.summary || "暂无摘要";
+            setConversationTitle(data.title);
             setStatus("已读取", "idle");
         }
     } catch (error) {
@@ -503,7 +528,9 @@ function startNewConversation() {
     }
 
     localStorage.removeItem(storageKey);
+    localStorage.removeItem(titleStorageKey);
     conversationInput.value = "";
+    conversationTitleText.textContent = "新会话";
     summaryText.textContent = "暂无摘要";
     resetStats();
     setStatus("新会话", "idle");

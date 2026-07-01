@@ -1,5 +1,6 @@
 package com.wenjie.aiassistant.lifecycle.impl;
 
+import com.wenjie.aiassistant.client.ChatModelClient;
 import com.wenjie.aiassistant.config.AiProperties;
 import com.wenjie.aiassistant.context.ChatContext;
 import com.wenjie.aiassistant.dto.ChatMessageDTO;
@@ -24,13 +25,18 @@ public class ConversationLifecycleServiceImpl implements ConversationLifecycleSe
 
     private final ConversationSummaryService conversationSummaryService;
 
+    private final ChatModelClient chatModelClient;
+
     @Override
     public ConversationLifecycleResult afterReply(ChatContext chatContext, String assistantReply) {
         String conversationId = chatContext.getConversationId();
 
         int assistantMessageIndex = conversationMemoryService.nextMessageIndex(conversationId);
-        ChatMessageDTO assistantMessage =
-                new ChatMessageDTO(assistantMessageIndex, "assistant", assistantReply);
+        ChatMessageDTO assistantMessage = new ChatMessageDTO(
+                assistantMessageIndex,
+                "assistant",
+                assistantReply
+        );
 
         conversationMemoryService.addMessages(conversationId, List.of(
                 chatContext.getCurrentUserMessage(),
@@ -38,8 +44,25 @@ public class ConversationLifecycleServiceImpl implements ConversationLifecycleSe
         ));
 
         int currentMessageIndex = conversationMemoryService.getCurrentMessageIndex(conversationId);
-        int lastSummaryMessageIndex =
-                conversationMemoryService.getLastSummaryMessageIndex(conversationId);
+        int lastSummaryMessageIndex = conversationMemoryService.getLastSummaryMessageIndex(conversationId);
+
+        boolean titleGenerated = false;
+        String title = conversationMemoryService.getTitle(conversationId);
+
+        if (!conversationMemoryService.hasTitle(conversationId)) {
+            try {
+                title = chatModelClient.generateTitle(chatContext.getCurrentUserMessage().getContent());
+                conversationMemoryService.updateTitle(conversationId, title);
+                titleGenerated = true;
+                log.info("Conversation title generated, conversationId={}, title={}", conversationId, title);
+            } catch (Exception e) {
+                title = conversationMemoryService.getTitle(conversationId);
+                log.warn("Conversation title generation failed; reply already generated. conversationId={}, error={}",
+                        conversationId,
+                        e.getMessage(),
+                        e);
+            }
+        }
 
         String summary = chatContext.getSummary();
         boolean summaryUpdated = false;
@@ -106,7 +129,9 @@ public class ConversationLifecycleServiceImpl implements ConversationLifecycleSe
         return new ConversationLifecycleResult(
                 summary,
                 currentMessageIndex,
-                summaryUpdated
+                summaryUpdated,
+                title,
+                titleGenerated
         );
     }
 }

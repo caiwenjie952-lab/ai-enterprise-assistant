@@ -14,6 +14,8 @@ public class ChatResponse {
      */
     private String conversationId;
 
+    private String title;
+
     /**
      * 模型回复内容
      */
@@ -33,4 +35,6 @@ public class ChatResponse {
      * 当前会话摘要
      */
     private String summary;
+
+
 }

@@ -17,6 +17,8 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
 
     private final ConcurrentHashMap<String, String> summaryMemory = new ConcurrentHashMap<>();
 
+    private final ConcurrentHashMap<String, String> titleMemory = new ConcurrentHashMap<>();
+
     private final ConcurrentHashMap<String, Integer> lastSummaryMessageIndexMemory = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<String, AtomicInteger> messageIndexMemory = new ConcurrentHashMap<>();
@@ -73,6 +75,7 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     public void clear(String conversationId) {
         memory.remove(conversationId);
         summaryMemory.remove(conversationId);
+        titleMemory.remove(conversationId);
         lastSummaryMessageIndexMemory.remove(conversationId);
         messageIndexMemory.remove(conversationId);
     }
@@ -85,6 +88,27 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     @Override
     public void updateSummary(String conversationId, String summary) {
         summaryMemory.put(conversationId, summary);
+    }
+
+    @Override
+    public String getTitle(String conversationId) {
+        return titleMemory.getOrDefault(conversationId, "新会话");
+    }
+
+    @Override
+    public void updateTitle(String conversationId, String title) {
+        if (title == null || title.isBlank()) {
+            titleMemory.put(conversationId, "新会话");
+            return;
+        }
+
+        titleMemory.put(conversationId, title);
+    }
+
+    @Override
+    public boolean hasTitle(String conversationId) {
+        String title = titleMemory.get(conversationId);
+        return title != null && !title.isBlank();
     }
 
     @Override

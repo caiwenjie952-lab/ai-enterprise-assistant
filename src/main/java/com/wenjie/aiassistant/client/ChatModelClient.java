@@ -25,4 +25,9 @@
          * @return 完整回复内容
          */
         String streamChat(List<ChatMessageDTO> messages, Consumer<String> chunkConsumer);
+
+        /**
+         * 根据用户第一条消息生成会话标题
+         */
+        String generateTitle(String userMessage);
     }

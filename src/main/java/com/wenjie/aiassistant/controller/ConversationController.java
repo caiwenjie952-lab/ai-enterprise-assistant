@@ -25,6 +25,7 @@ public class ConversationController {
 
         ConversationDetailResponse response = new ConversationDetailResponse(
                 conversationId,
+                conversationMemoryService.getTitle(conversationId),
                 messages.size(),
                 conversationMemoryService.getCurrentMessageIndex(conversationId),
                 conversationMemoryService.getLastSummaryMessageIndex(conversationId),

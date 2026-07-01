@@ -55,6 +55,7 @@ public class ChatServiceImpl implements ChatService {
 
             return new ChatResponse(
                     chatContext.getConversationId(),
+                    result.getTitle(),
                     reply,
                     aiProperties.getProvider(),
                     aiProperties.getModel(),

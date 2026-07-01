@@ -75,4 +75,19 @@ public interface ConversationMemoryService {
      * 裁剪内存消息，只保留最近 limit 条
      */
     void trimMessages(String conversationId, int limit);
+
+    /**
+     * 获取会话标题
+     */
+    String getTitle(String conversationId);
+
+    /**
+     * 更新会话标题
+     */
+    void updateTitle(String conversationId, String title);
+
+    /**
+     * 判断会话是否已有标题
+     */
+    boolean hasTitle(String conversationId);
 }

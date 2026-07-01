@@ -61,3 +61,15 @@ java -version
 - `POST /chat/stream`
 - `GET /conversation/{conversationId}`
 - `DELETE /conversation/{conversationId}`
+
+## Day 19 完成内容
+
+- 新增 `ChatModelClient.generateTitle(String userMessage)`，统一抽象会话标题生成能力。
+- `MockChatModelClient` 根据用户首条消息截取前 12 个字符作为标题，空消息返回“新会话”。
+- `DeepSeekChatModelClient` 使用非流式 `/chat/completions` 生成 5 到 15 个中文字符标题，失败时回退到用户消息前 12 个字符，且不影响正常聊天。
+- `ConversationMemoryService` 增加标题读写能力：`getTitle`、`updateTitle`、`hasTitle`。
+- `InMemoryConversationMemoryServiceImpl` 使用 `titleMemory` 保存会话标题，并在清空会话时同步清理。
+- `ConversationLifecycleServiceImpl` 在保存 user/assistant 消息后，为首次会话自动生成并保存标题。
+- `ChatResponse`、`ConversationDetailResponse` 增加 `title` 字段。
+- `POST /chat/stream` 在流式完成后新增 `conversation` SSE 事件，返回 `conversationId` 和 `title`，原有 `start/message/summary/done/error` 事件保持不变。
+- 前端页面增加“当前标题”展示，并支持读取 `conversation` 事件和会话详情中的标题。

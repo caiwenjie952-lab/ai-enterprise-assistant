@@ -14,4 +14,14 @@ public class ConversationLifecycleResult {
     private Integer currentMessageIndex;
 
     private Boolean summaryUpdated;
+
+    /**
+     * 会话标题
+     */
+    private String title;
+
+    /**
+     * 本轮是否生成了标题
+     */
+    private Boolean titleGenerated;
 }

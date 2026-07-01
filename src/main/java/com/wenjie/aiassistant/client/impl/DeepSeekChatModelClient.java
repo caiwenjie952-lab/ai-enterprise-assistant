@@ -277,6 +277,101 @@ public class DeepSeekChatModelClient implements ChatModelClient {
         }
     }
 
+    @Override
+    public String generateTitle(String userMessage) {
+        long startTime = System.currentTimeMillis();
+
+        try {
+            log.info("Start generating conversation title, model={}", aiProperties.getModel());
+
+            RestClient restClient = RestClient.builder()
+                    .baseUrl(aiProperties.getBaseUrl())
+                    .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + aiProperties.getApiKey())
+                    .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .build();
+
+            DeepSeekChatRequest request = new DeepSeekChatRequest();
+            request.setModel(aiProperties.getModel());
+            request.setTemperature(0.2);
+            request.setMaxTokens(50);
+            request.setStream(false);
+            request.setMessages(List.of(
+                    new DeepSeekMessage("system", """
+                            你是一个会话标题生成助手。
+                            请根据用户第一条消息生成一个 5 到 15 个中文字符的标题。
+                            只输出标题本身，不要解释。
+                            不要加引号。
+                            不要使用句号、问号、冒号、顿号、逗号、感叹号等标点。
+                            """),
+                    new DeepSeekMessage("user", userMessage == null ? "" : userMessage)
+            ));
+
+            DeepSeekChatResponse response = restClient.post()
+                    .uri("/chat/completions")
+                    .body(request)
+                    .retrieve()
+                    .body(DeepSeekChatResponse.class);
+
+            if (response == null
+                    || response.getChoices() == null
+                    || response.getChoices().isEmpty()
+                    || response.getChoices().getFirst().getMessage() == null
+                    || response.getChoices().getFirst().getMessage().getContent() == null) {
+                return fallbackTitle(userMessage);
+            }
+
+            String title = cleanTitle(response.getChoices().getFirst().getMessage().getContent(), userMessage);
+
+            long cost = System.currentTimeMillis() - startTime;
+            log.info("Conversation title generated, title={}, cost={}ms", title, cost);
+
+            return title;
+        } catch (Exception e) {
+            long cost = System.currentTimeMillis() - startTime;
+            log.warn("Conversation title generation failed, fallback will be used, cost={}ms, error={}",
+                    cost,
+                    e.getMessage());
+            return fallbackTitle(userMessage);
+        }
+    }
+
+    private String cleanTitle(String title, String userMessage) {
+        if (title == null || title.isBlank()) {
+            return fallbackTitle(userMessage);
+        }
+
+        String cleaned = title.trim()
+                .replaceAll("[\"'“”‘’《》<>]", "")
+                .replaceAll("[。？?！!：:；;、，,\\.]", "")
+                .replaceAll("\\s+", "");
+
+        if (cleaned.isBlank()) {
+            return fallbackTitle(userMessage);
+        }
+
+        if (cleaned.length() > 15) {
+            cleaned = cleaned.substring(0, 15);
+        }
+
+        return cleaned;
+    }
+
+    private String fallbackTitle(String userMessage) {
+        if (userMessage == null || userMessage.isBlank()) {
+            return "新会话";
+        }
+
+        String title = userMessage.trim()
+                .replace("\r", "")
+                .replace("\n", "");
+
+        if (title.length() > 12) {
+            title = title.substring(0, 12);
+        }
+
+        return title.isBlank() ? "新会话" : title;
+    }
+
     private String parseStreamContent(String data) {
         try {
             JsonNode root = objectMapper.readTree(data);

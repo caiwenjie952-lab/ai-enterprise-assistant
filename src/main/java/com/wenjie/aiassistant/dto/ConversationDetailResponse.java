@@ -16,6 +16,8 @@ public class ConversationDetailResponse {
      */
     private String conversationId;
 
+    private String title;
+
     /**
      * 当前内存中的消息数量
      */

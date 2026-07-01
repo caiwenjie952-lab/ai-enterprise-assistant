@@ -32,14 +32,13 @@ public class MockChatModelClient implements ChatModelClient {
 
     @Override
     public String summarize(String oldSummary, List<ChatMessageDTO> messages) {
-        return "Mock摘要：当前已有摘要=" + oldSummary
+        return "Mock摘要：已有摘要=" + oldSummary
                 + "，本次压缩消息数=" + messages.size();
     }
 
     @Override
     public String streamChat(List<ChatMessageDTO> messages, Consumer<String> chunkConsumer) {
         String reply = chat(messages);
-
         StringBuilder fullReply = new StringBuilder();
 
         for (int i = 0; i < reply.length(); i++) {
@@ -49,5 +48,22 @@ public class MockChatModelClient implements ChatModelClient {
         }
 
         return fullReply.toString();
+    }
+
+    @Override
+    public String generateTitle(String userMessage) {
+        if (userMessage == null || userMessage.isBlank()) {
+            return "新会话";
+        }
+
+        String title = userMessage.trim()
+                .replace("\r", "")
+                .replace("\n", "");
+
+        if (title.length() > 12) {
+            title = title.substring(0, 12);
+        }
+
+        return title.isBlank() ? "新会话" : title;
     }
 }
