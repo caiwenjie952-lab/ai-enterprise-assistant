@@ -5,6 +5,12 @@ spring:
   application:
     name: ai-enterprise-assistant
 
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/ai_enterprise_assistant?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+
 ai:
   provider: deepseek
   base-url: https://api.deepseek.com

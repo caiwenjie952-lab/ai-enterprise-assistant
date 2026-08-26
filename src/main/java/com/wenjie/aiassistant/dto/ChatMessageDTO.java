@@ -18,4 +18,7 @@ public class ChatMessageDTO {
      * 消息内容
      */
     private String content;
+
+    private Integer messageIndex;
+
 }

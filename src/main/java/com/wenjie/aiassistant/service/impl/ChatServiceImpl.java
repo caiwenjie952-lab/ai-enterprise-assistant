@@ -7,6 +7,7 @@ import com.wenjie.aiassistant.dto.ChatRequest;
 import com.wenjie.aiassistant.dto.ChatResponse;
 import com.wenjie.aiassistant.memory.ConversationMemoryService;
 import com.wenjie.aiassistant.service.ChatService;
+import com.wenjie.aiassistant.service.ConversationPersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,8 @@ public class ChatServiceImpl implements ChatService {
 
     private final ConversationMemoryService conversationMemoryService;
 
+    private final ConversationPersistenceService conversationPersistenceService;
+
     @Override
     public String test() {
         return "AI assistant is running";
@@ -42,20 +45,25 @@ public class ChatServiceImpl implements ChatService {
 
         log.info("收到用户聊天请求，conversationId={}，message={}", conversationId, userMessage);
 
+        conversationPersistenceService.ensureConversation(conversationId);
+
         long startTime = System.currentTimeMillis();
 
         try {
             List<ChatMessageDTO> historyMessages = conversationMemoryService.getMessages(conversationId);
 
-            ChatMessageDTO currentUserMessage = new ChatMessageDTO("user", userMessage);
+            int nextMessageIndex = historyMessages.size() + 1;
+            ChatMessageDTO currentUserMessage = new ChatMessageDTO("user", userMessage, nextMessageIndex);
             historyMessages.add(currentUserMessage);
 
             String reply = chatModelClient.chat(historyMessages);
 
-            conversationMemoryService.addMessages(conversationId, List.of(
-                    currentUserMessage,
-                    new ChatMessageDTO("assistant", reply)
-            ));
+            ChatMessageDTO assistantMessage = new ChatMessageDTO("assistant", reply, nextMessageIndex + 1);
+            List<ChatMessageDTO> roundMessages = List.of(currentUserMessage, assistantMessage);
+
+            conversationMemoryService.addMessages(conversationId, roundMessages);
+            conversationPersistenceService.saveMessages(conversationId, roundMessages);
+            conversationPersistenceService.updateCurrentMessageIndex(conversationId, nextMessageIndex + 1);
 
             long cost = System.currentTimeMillis() - startTime;
 
