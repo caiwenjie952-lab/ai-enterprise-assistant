@@ -43,4 +43,28 @@ public class AiProperties {
      * 最大输出 token 数
      */
     private Integer maxTokens;
+
+    /**
+     * 每次调用模型时最多携带的历史消息条数
+     */
+    private Integer maxHistoryMessages;
+
+    /**
+     * 触发会话摘要的历史消息数量阈值
+     */
+    private Integer summaryTriggerMessages;
+    /**
+     * 每次生成摘要时最多纳入的消息数
+     */
+    private Integer summaryMaxMessages;
+
+    /**
+     * 两次摘要之间至少新增的消息数量
+     */
+    private Integer summaryIntervalMessages;
+
+    /**
+     * 内存中每个会话最多保留的消息数量
+     */
+    private Integer maxMemoryMessages;
 }

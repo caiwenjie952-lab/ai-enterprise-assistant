@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant Stream Lab</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="side-panel">
+        <div class="brand">
+            <div class="brand-mark">AI</div>
+            <div>
+                <h1>流式聊天实验台</h1>
+                <p>Spring Boot SSE</p>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="endpointInput">流式接口</label>
+            <input id="endpointInput" value="/chat/stream" autocomplete="off">
+        </div>
+
+        <div class="field-group">
+            <label for="conversationInput">Conversation ID</label>
+            <input id="conversationInput" placeholder="首次对话可留空" autocomplete="off">
+        </div>
+
+        <div class="title-card">
+            <span>当前标题</span>
+            <strong id="conversationTitleText">新会话</strong>
+        </div>
+
+        <div class="button-row">
+            <button id="healthBtn" class="ghost-btn" type="button">检查后端</button>
+            <button id="loadBtn" class="ghost-btn" type="button">读取记忆</button>
+        </div>
+
+        <div class="button-row">
+            <button id="newBtn" class="ghost-btn" type="button">新会话</button>
+            <button id="clearBtn" class="danger-btn" type="button">清空记忆</button>
+        </div>
+
+        <label class="toggle-row" for="smoothToggle">
+            <input id="smoothToggle" type="checkbox" checked>
+            <span>平滑展示输出片段</span>
+        </label>
+
+        <div id="providerNotice" class="provider-notice" hidden>正在检测模型配置...</div>
+
+        <div class="metric-grid">
+            <div>
+                <span>状态</span>
+                <strong id="statusText">待连接</strong>
+            </div>
+            <div>
+                <span>耗时</span>
+                <strong id="elapsedText">0.0s</strong>
+            </div>
+            <div>
+                <span>片段</span>
+                <strong id="chunkText">0</strong>
+            </div>
+            <div>
+                <span>字符</span>
+                <strong id="charText">0</strong>
+            </div>
+        </div>
+
+        <section class="summary-panel">
+            <div class="section-title">会话摘要</div>
+            <p id="summaryText">暂无摘要</p>
+        </section>
+    </aside>
+
+    <main class="chat-panel">
+        <header class="chat-header">
+            <div>
+                <span class="eyebrow">STREAM PREVIEW</span>
+                <h2>实时响应</h2>
+            </div>
+            <div id="connectionBadge" class="badge idle">Idle</div>
+        </header>
+
+        <section id="messages" class="messages" aria-live="polite">
+            <div class="empty-state">
+                <h3>发一条消息，观察 SSE 事件如何逐步抵达。</h3>
+                <p>页面会记录 start、message、summary、done 等事件。</p>
+            </div>
+        </section>
+
+        <section class="prompt-bar">
+            <button class="prompt-chip" type="button">用三句话介绍一下流式输出</button>
+            <button class="prompt-chip" type="button">给我一个企业知识库问答的设计思路</button>
+            <button class="prompt-chip" type="button">解释 SSE 和普通 HTTP 响应的区别</button>
+        </section>
+
+        <form id="chatForm" class="composer">
+            <textarea id="messageInput" rows="3" placeholder="输入消息，Ctrl + Enter 发送"></textarea>
+            <div class="composer-actions">
+                <button id="stopBtn" class="ghost-btn" type="button" disabled>停止</button>
+                <button id="sendBtn" class="primary-btn" type="submit">发送</button>
+            </div>
+        </form>
+    </main>
+
+    <aside class="event-panel">
+        <div class="event-header">
+            <div>
+                <span class="eyebrow">SSE EVENTS</span>
+                <h2>事件流</h2>
+            </div>
+            <button id="clearEventsBtn" class="icon-btn" type="button" title="清空事件">清空</button>
+        </div>
+        <div id="events" class="events"></div>
+    </aside>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

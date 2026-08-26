@@ -17,8 +17,22 @@ ai:
   api-key: ${DEEPSEEK_API_KEY}
   model: deepseek-v4-flash
   system-prompt: 你是一个专业、简洁、可靠的企业 AI 助手。回答要准确，优先使用简洁中文。
-  temperature: 0.3
+  temperature: 0.7
   max-tokens: 1024
+  #summary-max-messages >= summary-interval-messages 否则摘要会漏消息。
+  #max-memory-messages > summary-interval-messages 否则还没摘要，消息可能先被裁掉。
+  #max-memory-messages >= max-history-messages 否则正常聊天想取 10 条，内存却只剩 6 条。
+  #更推荐 max-memory-messages >= summary-trigger-messages + summary-interval-messages
+  #聊天时只带最近 10 条消息
+  max-history-messages: 4
+  #历史达到 20 条后开始摘要
+  summary-trigger-messages: 6
+  #之后每新增 10 条消息再摘要一次
+  summary-interval-messages: 6
+  #每次摘要最多看最近 20 条消息
+  summary-max-messages: 6
+  #内存历史不无限增长，只保留最近
+  max-memory-messages: 12
 
 logging:
   pattern:
