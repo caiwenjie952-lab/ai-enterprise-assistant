@@ -47,4 +47,5 @@ public interface ConversationPersistenceService {
     List<ConversationListItemResponse> listConversations();
 
     ConversationDetailResponse getConversationDetail(String conversationId);
-}
+
+    boolean deleteConversation(String conversationId);}

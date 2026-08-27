@@ -37,7 +37,14 @@ public class ConversationController {
 
     @DeleteMapping("/{conversationId}")
     public Result<Void> delete(@PathVariable String conversationId) {
+        boolean deleted = conversationPersistenceService.deleteConversation(conversationId);
+
+        if (!deleted) {
+            return Result.fail(404, "会话不存在");
+        }
+
         conversationMemoryService.clear(conversationId);
+
         return Result.success(null);
     }
 }

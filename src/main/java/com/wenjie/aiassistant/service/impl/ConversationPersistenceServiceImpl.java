@@ -1,4 +1,4 @@
-package com.wenjie.aiassistant.persistence.impl;
+package com.wenjie.aiassistant.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -12,6 +12,7 @@ import com.wenjie.aiassistant.mapper.AiConversationMapper;
 import com.wenjie.aiassistant.persistence.ConversationPersistenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -134,14 +135,27 @@ public class ConversationPersistenceServiceImpl implements ConversationPersisten
             return null;
         }
 
-        List<AiChatMessageEntity> messageEntities = aiChatMessageMapper.selectList(new LambdaQueryWrapper<AiChatMessageEntity>().
-                eq(AiChatMessageEntity::getConversationId, conversationId).orderByAsc(AiChatMessageEntity::getMessageIndex));
+        List<AiChatMessageEntity> messageEntities = aiChatMessageMapper.selectList(new LambdaQueryWrapper<AiChatMessageEntity>().eq(AiChatMessageEntity::getConversationId, conversationId).orderByAsc(AiChatMessageEntity::getMessageIndex));
 
-        List<ChatMessageDTO> messages = messageEntities.stream().map(message ->
-                new ChatMessageDTO(message.getMessageIndex(), message.getRole(), message.getContent())).toList();
+        List<ChatMessageDTO> messages = messageEntities.stream().map(message -> new ChatMessageDTO(message.getMessageIndex(), message.getRole(), message.getContent())).toList();
 
-        return new ConversationDetailResponse(conversationId, conversation.getTitle(), conversation.getSummary(), messages.size(),
-                conversation.getCurrentMessageIndex(), conversation.getLastSummaryMessageIndex(), messages);
+        return new ConversationDetailResponse(conversationId, conversation.getTitle(), conversation.getSummary(), messages.size(), conversation.getCurrentMessageIndex(), conversation.getLastSummaryMessageIndex(), messages);
+    }
+
+    @Override
+    @Transactional
+    public boolean deleteConversation(String conversationId) {
+        AiConversationEntity conversation = findConversation(conversationId);
+
+        if (conversation == null) {
+            return false;
+        }
+
+        aiChatMessageMapper.delete(new LambdaQueryWrapper<AiChatMessageEntity>().eq(AiChatMessageEntity::getConversationId, conversationId));
+
+        aiConversationMapper.delete(new LambdaQueryWrapper<AiConversationEntity>().eq(AiConversationEntity::getConversationId, conversationId));
+
+        return true;
     }
 
     private Long toTimestamp(LocalDateTime time) {

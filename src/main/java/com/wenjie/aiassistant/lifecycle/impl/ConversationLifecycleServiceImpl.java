@@ -7,7 +7,7 @@ import com.wenjie.aiassistant.dto.ChatMessageDTO;
 import com.wenjie.aiassistant.lifecycle.ConversationLifecycleResult;
 import com.wenjie.aiassistant.lifecycle.ConversationLifecycleService;
 import com.wenjie.aiassistant.memory.ConversationMemoryService;
-import com.wenjie.aiassistant.summary.ConversationSummaryService;
+import com.wenjie.aiassistant.persistence.ConversationPersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,118 +20,109 @@ import java.util.List;
 public class ConversationLifecycleServiceImpl implements ConversationLifecycleService {
 
     private final AiProperties aiProperties;
-
-    private final ConversationMemoryService conversationMemoryService;
-
-    private final ConversationSummaryService conversationSummaryService;
-
     private final ChatModelClient chatModelClient;
+    private final ConversationMemoryService conversationMemoryService;
+    private final ConversationPersistenceService conversationPersistenceService;
 
     @Override
-    public ConversationLifecycleResult afterReply(ChatContext chatContext, String assistantReply) {
+    public ConversationLifecycleResult afterReply(ChatContext chatContext, String reply) {
         String conversationId = chatContext.getConversationId();
 
+        // 1. 生成 assistant 消息序号
         int assistantMessageIndex = conversationMemoryService.nextMessageIndex(conversationId);
-        ChatMessageDTO assistantMessage = new ChatMessageDTO(
-                assistantMessageIndex,
-                "assistant",
-                assistantReply
-        );
 
-        conversationMemoryService.addMessages(conversationId, List.of(
-                chatContext.getCurrentUserMessage(),
-                assistantMessage
-        ));
+        ChatMessageDTO assistantMessage = new ChatMessageDTO(assistantMessageIndex, "assistant", reply);
 
+        ChatMessageDTO userMessage = chatContext.getCurrentUserMessage();
+
+        List<ChatMessageDTO> newMessages = List.of(userMessage, assistantMessage);
+
+        // 2. 写入 Memory
+        conversationMemoryService.addMessages(conversationId, newMessages);
+
+        // 3. 确保数据库中存在会话主记录
+        conversationPersistenceService.ensureConversation(conversationId);
+
+        // 4. 保存本轮 user + assistant 消息
+        conversationPersistenceService.saveMessages(conversationId, newMessages);
+
+        // 5. 更新当前 messageIndex
         int currentMessageIndex = conversationMemoryService.getCurrentMessageIndex(conversationId);
-        int lastSummaryMessageIndex = conversationMemoryService.getLastSummaryMessageIndex(conversationId);
 
-        boolean titleGenerated = false;
+        conversationPersistenceService.updateCurrentMessageIndex(conversationId, currentMessageIndex);
+
+        // 6. 新会话标题
         String title = conversationMemoryService.getTitle(conversationId);
 
-        if (!conversationMemoryService.hasTitle(conversationId)) {
-            try {
-                title = chatModelClient.generateTitle(chatContext.getCurrentUserMessage().getContent());
+        if (title == null || title.isBlank()) {
+            title = generateTitle(userMessage.getContent());
+
+            if (title != null && !title.isBlank()) {
                 conversationMemoryService.updateTitle(conversationId, title);
-                titleGenerated = true;
-                log.info("Conversation title generated, conversationId={}, title={}", conversationId, title);
-            } catch (Exception e) {
-                title = conversationMemoryService.getTitle(conversationId);
-                log.warn("Conversation title generation failed; reply already generated. conversationId={}, error={}",
-                        conversationId,
-                        e.getMessage(),
-                        e);
+                conversationPersistenceService.updateTitle(conversationId, title);
             }
         }
 
-        String summary = chatContext.getSummary();
+        // 7. 判断是否需要更新摘要
         boolean summaryUpdated = false;
 
-        int summaryTriggerMessages = aiProperties.getSummaryTriggerMessages() == null
-                ? 20
-                : aiProperties.getSummaryTriggerMessages();
+        String summary = conversationMemoryService.getSummary(conversationId);
+        int lastSummaryMessageIndex = conversationMemoryService.getLastSummaryMessageIndex(conversationId);
 
-        int summaryIntervalMessages = aiProperties.getSummaryIntervalMessages() == null
-                ? 10
-                : aiProperties.getSummaryIntervalMessages();
+        Integer summaryTriggerMessages = aiProperties.getSummaryTriggerMessages();
+        Integer summaryIntervalMessages = aiProperties.getSummaryIntervalMessages();
+        Integer summaryMaxMessages = aiProperties.getSummaryMaxMessages();
 
-        int summaryMaxMessages = aiProperties.getSummaryMaxMessages() == null
-                ? 20
-                : aiProperties.getSummaryMaxMessages();
+        int trigger = summaryTriggerMessages == null ? 30 : summaryTriggerMessages;
+        int interval = summaryIntervalMessages == null ? 10 : summaryIntervalMessages;
+        int maxSummaryMessages = summaryMaxMessages == null ? 12 : summaryMaxMessages;
 
-        int maxMemoryMessages = aiProperties.getMaxMemoryMessages() == null
-                ? 50
-                : aiProperties.getMaxMemoryMessages();
+        boolean reachedTrigger = currentMessageIndex >= trigger;
 
-        boolean needSummary = currentMessageIndex >= summaryTriggerMessages
-                && currentMessageIndex - lastSummaryMessageIndex >= summaryIntervalMessages;
+        boolean reachedInterval = currentMessageIndex - lastSummaryMessageIndex >= interval;
 
-        if (needSummary) {
-            List<ChatMessageDTO> summaryMessages =
-                    conversationMemoryService.getMessagesAfterIndex(
-                            conversationId,
-                            lastSummaryMessageIndex,
-                            summaryMaxMessages
-                    );
+        if (reachedTrigger && reachedInterval) {
+            List<ChatMessageDTO> messagesToSummarize = conversationMemoryService.getMessagesAfterIndex(conversationId, lastSummaryMessageIndex, maxSummaryMessages);
 
-            try {
-                String newSummary = conversationSummaryService.summarize(summary, summaryMessages);
+            if (!messagesToSummarize.isEmpty()) {
+                String newSummary = chatModelClient.summarize(summary, messagesToSummarize);
 
-                conversationMemoryService.updateSummary(conversationId, newSummary);
-                conversationMemoryService.updateLastSummaryMessageIndex(conversationId, currentMessageIndex);
+                if (newSummary != null && !newSummary.isBlank()) {
+                    int newLastSummaryMessageIndex = messagesToSummarize.get(messagesToSummarize.size() - 1).getMessageIndex();
 
-                summary = newSummary;
-                summaryUpdated = true;
+                    conversationMemoryService.updateSummary(conversationId, newSummary);
 
-                log.info("Conversation summary updated, conversationId={}, currentMessageIndex={}, lastSummaryMessageIndex={}, summaryMessages={}",
-                        conversationId,
-                        currentMessageIndex,
-                        lastSummaryMessageIndex,
-                        summaryMessages.size());
-            } catch (Exception e) {
-                log.warn("Conversation summary update failed; reply already generated. conversationId={}, currentMessageIndex={}, error={}",
-                        conversationId,
-                        currentMessageIndex,
-                        e.getMessage(),
-                        e);
+                    conversationMemoryService.updateLastSummaryMessageIndex(conversationId, newLastSummaryMessageIndex);
+
+                    conversationPersistenceService.updateSummary(conversationId, newSummary, newLastSummaryMessageIndex);
+
+                    summary = newSummary;
+                    lastSummaryMessageIndex = newLastSummaryMessageIndex;
+                    summaryUpdated = true;
+                }
             }
-        } else {
-            log.info("Conversation summary skipped, conversationId={}, currentMessageIndex={}, lastSummaryMessageIndex={}, summaryTriggerMessages={}, summaryIntervalMessages={}",
-                    conversationId,
-                    currentMessageIndex,
-                    lastSummaryMessageIndex,
-                    summaryTriggerMessages,
-                    summaryIntervalMessages);
         }
 
-        conversationMemoryService.trimMessages(conversationId, maxMemoryMessages);
+        // 8. 内存裁剪
+        Integer maxMemoryMessages = aiProperties.getMaxMemoryMessages();
+        int maxMemory = maxMemoryMessages == null ? 50 : maxMemoryMessages;
 
-        return new ConversationLifecycleResult(
-                summary,
-                currentMessageIndex,
-                summaryUpdated,
-                title,
-                titleGenerated
-        );
+        conversationMemoryService.trimMessages(conversationId, maxMemory);
+
+        // 9. 更新时间
+        conversationMemoryService.touchConversation(conversationId);
+
+        log.info("会话生命周期处理完成，conversationId={}，currentMessageIndex={}，lastSummaryMessageIndex={}，summaryUpdated={}", conversationId, currentMessageIndex, lastSummaryMessageIndex, summaryUpdated);
+
+        return new ConversationLifecycleResult(summary, currentMessageIndex, summaryUpdated, title, title != null && !title.isBlank());
+    }
+
+    private String generateTitle(String userMessage) {
+        try {
+            return chatModelClient.generateTitle(userMessage);
+        } catch (Exception e) {
+            log.warn("生成会话标题失败，message={}，error={}", userMessage, e.getMessage());
+            return "";
+        }
     }
 }
