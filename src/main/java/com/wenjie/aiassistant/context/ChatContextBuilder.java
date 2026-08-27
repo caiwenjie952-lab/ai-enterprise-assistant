@@ -1,10 +1,12 @@
 package com.wenjie.aiassistant.context;
 
 import com.wenjie.aiassistant.config.AiProperties;
+import com.wenjie.aiassistant.conversation.ConversationRestoreService;
 import com.wenjie.aiassistant.dto.ChatMessageDTO;
 import com.wenjie.aiassistant.dto.ChatRequest;
 import com.wenjie.aiassistant.memory.ConversationMemoryService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -13,50 +15,43 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ChatContextBuilder {
 
     private final AiProperties aiProperties;
-
     private final ConversationMemoryService conversationMemoryService;
+    private final ConversationRestoreService conversationRestoreService;
 
     public ChatContext build(ChatRequest request) {
         String conversationId = request.getConversationId();
 
         if (conversationId == null || conversationId.isBlank()) {
             conversationId = UUID.randomUUID().toString().replace("-", "");
+        } else {
+            conversationRestoreService.ensureLoaded(conversationId);
         }
 
-        int maxHistoryMessages = aiProperties.getMaxHistoryMessages() == null
-                ? 10
-                : aiProperties.getMaxHistoryMessages();
+        int maxHistoryMessages = aiProperties.getMaxHistoryMessages() == null ? 10 : aiProperties.getMaxHistoryMessages();
 
         String summary = conversationMemoryService.getSummary(conversationId);
-        List<ChatMessageDTO> recentMessages =
-                conversationMemoryService.getRecentMessages(conversationId, maxHistoryMessages);
+
+        List<ChatMessageDTO> recentMessages = conversationMemoryService.getRecentMessages(conversationId, maxHistoryMessages);
 
         int userMessageIndex = conversationMemoryService.nextMessageIndex(conversationId);
-        ChatMessageDTO currentUserMessage =
-                new ChatMessageDTO(userMessageIndex, "user", request.getMessage());
+
+        ChatMessageDTO currentUserMessage = new ChatMessageDTO(userMessageIndex, "user", request.getMessage());
 
         List<ChatMessageDTO> contextMessages = new ArrayList<>();
 
         if (summary != null && !summary.isBlank()) {
-            contextMessages.add(new ChatMessageDTO(
-                    0,
-                    "system",
-                    "以下是本次会话的长期摘要，请结合它理解用户上下文：" + summary
-            ));
+            contextMessages.add(new ChatMessageDTO(0, "system", "以下是本次会话的长期摘要，请结合它理解用户上下文：" + summary));
         }
 
         contextMessages.addAll(recentMessages);
         contextMessages.add(currentUserMessage);
 
-        return new ChatContext(
-                conversationId,
-                currentUserMessage,
-                contextMessages,
-                summary,
-                recentMessages.size()
-        );
+        log.info("上下文构造完成，conversationId={}，summaryExists={}，recentMessages={}，userMessageIndex={}", conversationId, summary != null && !summary.isBlank(), recentMessages.size(), userMessageIndex);
+
+        return new ChatContext(conversationId, currentUserMessage, contextMessages, summary, recentMessages.size());
     }
 }

@@ -2,18 +2,16 @@ package com.wenjie.aiassistant.service.impl;
 
 import com.wenjie.aiassistant.client.ChatModelClient;
 import com.wenjie.aiassistant.config.AiProperties;
-import com.wenjie.aiassistant.dto.ChatMessageDTO;
+import com.wenjie.aiassistant.context.ChatContext;
+import com.wenjie.aiassistant.context.ChatContextBuilder;
 import com.wenjie.aiassistant.dto.ChatRequest;
 import com.wenjie.aiassistant.dto.ChatResponse;
-import com.wenjie.aiassistant.memory.ConversationMemoryService;
+import com.wenjie.aiassistant.lifecycle.ConversationLifecycleResult;
+import com.wenjie.aiassistant.lifecycle.ConversationLifecycleService;
 import com.wenjie.aiassistant.service.ChatService;
-import com.wenjie.aiassistant.service.ConversationPersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -21,12 +19,9 @@ import java.util.UUID;
 public class ChatServiceImpl implements ChatService {
 
     private final ChatModelClient chatModelClient;
-
     private final AiProperties aiProperties;
-
-    private final ConversationMemoryService conversationMemoryService;
-
-    private final ConversationPersistenceService conversationPersistenceService;
+    private final ChatContextBuilder chatContextBuilder;
+    private final ConversationLifecycleService conversationLifecycleService;
 
     @Override
     public String test() {
@@ -35,51 +30,32 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public ChatResponse chat(ChatRequest request) {
-        String conversationId = request.getConversationId();
-
-        if (conversationId == null || conversationId.isBlank()) {
-            conversationId = UUID.randomUUID().toString().replace("-", "");
-        }
-
-        String userMessage = request.getMessage();
-
-        log.info("收到用户聊天请求，conversationId={}，message={}", conversationId, userMessage);
-
-        conversationPersistenceService.ensureConversation(conversationId);
-
         long startTime = System.currentTimeMillis();
 
+        ChatContext chatContext = chatContextBuilder.build(request);
+        String conversationId = chatContext.getConversationId();
+
+        log.info("收到用户聊天请求，conversationId={}，message={}", conversationId, request.getMessage());
+
         try {
-            List<ChatMessageDTO> historyMessages = conversationMemoryService.getMessages(conversationId);
+            // 1. 调用模型，拿到真实回复
+            String reply = chatModelClient.chat(chatContext.getContextMessages());
 
-            int nextMessageIndex = historyMessages.size() + 1;
-            ChatMessageDTO currentUserMessage = new ChatMessageDTO("user", userMessage, nextMessageIndex);
-            historyMessages.add(currentUserMessage);
-
-            String reply = chatModelClient.chat(historyMessages);
-
-            ChatMessageDTO assistantMessage = new ChatMessageDTO("assistant", reply, nextMessageIndex + 1);
-            List<ChatMessageDTO> roundMessages = List.of(currentUserMessage, assistantMessage);
-
-            conversationMemoryService.addMessages(conversationId, roundMessages);
-            conversationPersistenceService.saveMessages(conversationId, roundMessages);
-            conversationPersistenceService.updateCurrentMessageIndex(conversationId, nextMessageIndex + 1);
+            // 2. 处理消息保存、标题、摘要、messageIndex、内存裁剪等生命周期逻辑
+            ConversationLifecycleResult lifecycleResult = conversationLifecycleService.afterReply(chatContext, reply);
 
             long cost = System.currentTimeMillis() - startTime;
 
-            log.info("聊天模型调用成功，conversationId={}，历史消息数={}，耗时={}ms",
-                    conversationId, historyMessages.size(), cost);
+            log.info("聊天模型调用成功，conversationId={}，currentMessageIndex={}，summaryUpdated={}，耗时={}ms", conversationId, lifecycleResult.getCurrentMessageIndex(), lifecycleResult.getSummaryUpdated(), cost);
 
-            return new ChatResponse(
-                    conversationId,
-                    reply,
-                    aiProperties.getProvider(),
-                    aiProperties.getModel()
-            );
+            // 3. 返回真实数据
+            return new ChatResponse(conversationId, lifecycleResult.getTitle(), reply, aiProperties.getProvider(), aiProperties.getModel(), lifecycleResult.getSummary());
+
         } catch (Exception e) {
             long cost = System.currentTimeMillis() - startTime;
-            log.error("聊天模型调用失败，conversationId={}，耗时={}ms，错误={}",
-                    conversationId, cost, e.getMessage(), e);
+
+            log.error("聊天模型调用失败，conversationId={}，耗时={}ms，错误={}", conversationId, cost, e.getMessage(), e);
+
             throw e;
         }
     }

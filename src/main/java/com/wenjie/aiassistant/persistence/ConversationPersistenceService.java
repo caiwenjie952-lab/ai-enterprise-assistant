@@ -1,18 +1,19 @@
-package com.wenjie.aiassistant.service;
+package com.wenjie.aiassistant.persistence;
 
 import com.wenjie.aiassistant.dto.ChatMessageDTO;
+import com.wenjie.aiassistant.entity.AiConversationEntity;
 
 import java.util.List;
 
 public interface ConversationPersistenceService {
 
     /**
-     * 确保会话存在。
+     * 确保数据库中存在当前会话
      */
     void ensureConversation(String conversationId);
 
     /**
-     * 保存消息。
+     * 保存消息
      */
     void saveMessages(
             String conversationId,
@@ -20,7 +21,7 @@ public interface ConversationPersistenceService {
     );
 
     /**
-     * 更新标题。
+     * 更新标题
      */
     void updateTitle(
             String conversationId,
@@ -28,7 +29,7 @@ public interface ConversationPersistenceService {
     );
 
     /**
-     * 更新摘要和摘要进度。
+     * 更新摘要和摘要进度
      */
     void updateSummary(
             String conversationId,
@@ -37,10 +38,25 @@ public interface ConversationPersistenceService {
     );
 
     /**
-     * 更新当前最新消息序号。
+     * 更新当前消息序号
      */
     void updateCurrentMessageIndex(
             String conversationId,
             int currentMessageIndex
+    );
+
+    /**
+     * 根据 conversationId 查询会话
+     */
+    AiConversationEntity findConversation(
+            String conversationId
+    );
+
+    /**
+     * 查询最近 N 条数据库消息
+     */
+    List<ChatMessageDTO> findRecentMessages(
+            String conversationId,
+            int limit
     );
 }

@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatMessageDTO {
+    private Integer messageIndex;
 
     /**
      * 消息角色：user / assistant / system
@@ -19,6 +20,5 @@ public class ChatMessageDTO {
      */
     private String content;
 
-    private Integer messageIndex;
 
 }
