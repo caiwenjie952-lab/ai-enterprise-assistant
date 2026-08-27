@@ -22,7 +22,7 @@ public class ConversationListItemResponse {
     /**
      * 当前内存中保留的消息数量
      */
-    private Integer memoryMessageCount;
+    private Integer messageCount;
 
     /**
      * 当前最新消息序号
