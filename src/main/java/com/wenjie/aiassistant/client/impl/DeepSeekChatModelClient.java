@@ -140,15 +140,15 @@ public class DeepSeekChatModelClient implements ChatModelClient {
             request.setMaxTokens(800);
             request.setMessages(List.of(
                     new DeepSeekMessage("system", """
-                        你是一个会话摘要助手。你的任务是把用户和助手的历史对话压缩成简洁、准确、可用于后续上下文理解的摘要。
-                        要求：
-                        1. 使用中文。
-                        2. 控制在 500 字以内。
-                        3. 保留用户目标、关键事实、已确认结论、待办事项。
-                        4. 删除寒暄、重复内容和无关细节。
-                        5. 不要编造原文没有的信息。
-                        6. 直接输出摘要内容，不要输出解释。
-                        """),
+                            你是一个会话摘要助手。你的任务是把用户和助手的历史对话压缩成简洁、准确、可用于后续上下文理解的摘要。
+                            要求：
+                            1. 使用中文。
+                            2. 控制在 500 字以内。
+                            3. 保留用户目标、关键事实、已确认结论、待办事项。
+                            4. 删除寒暄、重复内容和无关细节。
+                            5. 不要编造原文没有的信息。
+                            6. 直接输出摘要内容，不要输出解释。
+                            """),
                     new DeepSeekMessage("user", conversationText.toString())
             ));
             request.setStream(false);

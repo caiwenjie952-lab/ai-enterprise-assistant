@@ -4,6 +4,13 @@ server:
 spring:
   application:
     name: ai-enterprise-assistant
+  ai:
+    openai:
+      base-url: https://api.deepseek.com
+      api-key: ${DEEPSEEK_API_KEY}
+      chat:
+        options:
+          model: deepseek-chat
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
