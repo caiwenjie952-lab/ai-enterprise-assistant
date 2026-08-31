@@ -2,6 +2,7 @@ package com.wenjie.aiassistant.client;
 
 import com.wenjie.aiassistant.dto.ChatMessageDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -20,31 +21,26 @@ import java.util.function.Consumer;
 @Primary
 public class SpringAiChatModelClient implements ChatModelClient {
 
-    private final ChatModel chatModel;
+    private final ChatClient chatClient;
 
     @Override
     public String chat(List<ChatMessageDTO> messages) {
         List<Message> springAiMessages = messages.stream().map(this::convertMessage).toList();
 
-        Prompt prompt = new Prompt(springAiMessages);
 
-        return Objects.requireNonNull(chatModel.call(prompt).getResult()).getOutput().getText();
+        return chatClient.prompt().messages(springAiMessages).call().content();
     }
 
     @Override
     public String streamChat(List<ChatMessageDTO> messages, Consumer<String> chunkConsumer) {
         List<Message> springAiMessages = messages.stream().map(this::convertMessage).toList();
 
-        Prompt prompt = new Prompt(springAiMessages);
-
         StringBuilder fullReply = new StringBuilder();
 
-        chatModel.stream(prompt).doOnNext(response -> {
-            String text = Objects.requireNonNull(response.getResult()).getOutput().getText();
-
-            if (text != null && !text.isEmpty()) {
-                fullReply.append(text);
-                chunkConsumer.accept(text);
+        chatClient.prompt().messages(springAiMessages).stream().content().doOnNext(chunk -> {
+            if (chunk != null && !chunk.isEmpty()) {
+                fullReply.append(chunk);
+                chunkConsumer.accept(chunk);
             }
         }).blockLast();
 
@@ -78,7 +74,7 @@ public class SpringAiChatModelClient implements ChatModelClient {
                 %s
                 """.formatted(content);
 
-        return chatModel.call(prompt);
+        return chatClient.prompt().user(prompt).call().content();
     }
 
     @Override
@@ -97,7 +93,7 @@ public class SpringAiChatModelClient implements ChatModelClient {
                 %s
                 """.formatted(userMessage);
 
-        return chatModel.call(prompt);
+        return chatClient.prompt().user(prompt).call().content();
     }
 
     private Message convertMessage(ChatMessageDTO message) {
