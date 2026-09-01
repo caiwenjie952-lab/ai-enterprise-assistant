@@ -42,5 +42,7 @@ ai:
   max-memory-messages: 12
 
 logging:
+  level:
+    org.springframework.ai.chat.client.advisor: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level traceId=%X{traceId} %logger{36} - %msg%n"
