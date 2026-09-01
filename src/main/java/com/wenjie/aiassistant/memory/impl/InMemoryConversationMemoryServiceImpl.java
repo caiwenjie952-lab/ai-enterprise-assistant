@@ -160,7 +160,7 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
 
     @Override
     public String getTitle(String conversationId) {
-        return titleMemory.getOrDefault(conversationId, "新会话");
+        return titleMemory.get(conversationId);
     }
 
 
@@ -180,7 +180,7 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     public boolean hasTitle(String conversationId) {
         String title = titleMemory.get(conversationId);
 
-        return title != null && !title.isBlank() && !"新会话".equals(title);
+        return title != null && !title.isBlank();
     }
 
 
