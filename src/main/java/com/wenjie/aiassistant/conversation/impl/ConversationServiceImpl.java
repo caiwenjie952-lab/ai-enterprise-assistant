@@ -7,6 +7,7 @@ import com.wenjie.aiassistant.exception.BusinessException;
 import com.wenjie.aiassistant.memory.ConversationMemoryService;
 import com.wenjie.aiassistant.persistence.ConversationPersistenceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +18,7 @@ public class ConversationServiceImpl implements ConversationService {
 
     private final ConversationMemoryService conversationMemoryService;
     private final ConversationPersistenceService conversationPersistenceService;
+    private final ChatMemory chatMemory;
 
     @Override
     public List<ConversationListItemResponse> listConversations() {
@@ -43,5 +45,6 @@ public class ConversationServiceImpl implements ConversationService {
         }
 
         conversationMemoryService.clear(conversationId);
+        chatMemory.clear(conversationId);
     }
 }

@@ -5,6 +5,7 @@ import com.wenjie.aiassistant.conversation.ConversationRestoreService;
 import com.wenjie.aiassistant.dto.ChatMessageDTO;
 import com.wenjie.aiassistant.dto.ChatRequest;
 import com.wenjie.aiassistant.memory.ConversationMemoryService;
+import com.wenjie.aiassistant.memory.SpringAiChatMemoryRestoreService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ public class ChatContextBuilder {
     private final AiProperties aiProperties;
     private final ConversationMemoryService conversationMemoryService;
     private final ConversationRestoreService conversationRestoreService;
+    private final SpringAiChatMemoryRestoreService springAiChatMemoryRestoreService;
 
     public ChatContext build(ChatRequest request) {
         String conversationId = request.getConversationId();
@@ -29,6 +31,7 @@ public class ChatContextBuilder {
             conversationId = UUID.randomUUID().toString().replace("-", "");
         } else {
             conversationRestoreService.ensureLoaded(conversationId);
+            springAiChatMemoryRestoreService.ensureLoaded(conversationId);
         }
 
         int maxHistoryMessages = aiProperties.getMaxHistoryMessages() == null ? 10 : aiProperties.getMaxHistoryMessages();
@@ -47,7 +50,6 @@ public class ChatContextBuilder {
             contextMessages.add(new ChatMessageDTO(0, "system", "以下是本次会话的长期摘要，请结合它理解用户上下文：" + summary));
         }
 
-        contextMessages.addAll(recentMessages);
         contextMessages.add(currentUserMessage);
 
         log.info("上下文构造完成，conversationId={}，summaryExists={}，recentMessages={}，userMessageIndex={}", conversationId, summary != null && !summary.isBlank(), recentMessages.size(), userMessageIndex);

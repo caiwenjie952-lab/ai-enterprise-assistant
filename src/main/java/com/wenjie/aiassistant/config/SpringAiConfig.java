@@ -2,6 +2,7 @@ package com.wenjie.aiassistant.config;
 
 import com.wenjie.aiassistant.advisor.AiCallTimingAdvisor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
@@ -21,5 +22,11 @@ public class SpringAiConfig {
     @Bean
     public ChatMemory chatMemory() {
         return MessageWindowChatMemory.builder().maxMessages(10).build();
+    }
+
+    //会自动维持有限的消息窗口；底层 ChatMemoryRepository 决定消息实际存在哪里
+    @Bean
+    public MessageChatMemoryAdvisor messageChatMemoryAdvisor(ChatMemory chatMemory) {
+        return MessageChatMemoryAdvisor.builder(chatMemory).build();
     }
 }

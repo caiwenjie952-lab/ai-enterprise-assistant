@@ -18,11 +18,12 @@ public class MockChatModelClient implements ChatModelClient {
     private final AiProperties aiProperties;
 
     @Override
-    public String chat(List<ChatMessageDTO> messages) {
+    public String chat(String conversationId, List<ChatMessageDTO> messages) {
         ChatMessageDTO lastUserMessage = messages.stream().filter(message -> "user".equals(message.getRole())).reduce((first, second) -> second).orElse(new ChatMessageDTO(null, "user", ""));
 
         return "当前模型提供方：" + aiProperties.getProvider() + "，模型名称：" + aiProperties.getModel() + "，历史消息数：" + messages.size() + "，收到你的问题：" + lastUserMessage.getContent();
     }
+
 
     @Override
     public String summarize(String oldSummary, List<ChatMessageDTO> messages) {
@@ -30,9 +31,10 @@ public class MockChatModelClient implements ChatModelClient {
     }
 
     @Override
-    public String streamChat(List<ChatMessageDTO> messages, Consumer<String> chunkConsumer) {
+    public String streamChat(String conversationId, List<ChatMessageDTO> messages, Consumer<String> chunkConsumer) {
         return "";
     }
+
 
     @Override
     public String generateTitle(String userMessage) {

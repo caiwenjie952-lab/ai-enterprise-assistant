@@ -39,8 +39,7 @@ public class ChatServiceImpl implements ChatService {
 
         try {
             // 1. 调用模型，拿到真实回复
-            String reply = chatModelClient.chat(chatContext.getContextMessages());
-
+            String reply = chatModelClient.chat(conversationId, chatContext.getContextMessages());
             // 2. 处理消息保存、标题、摘要、messageIndex、内存裁剪等生命周期逻辑
             ConversationLifecycleResult lifecycleResult = conversationLifecycleService.afterReply(chatContext, reply);
 

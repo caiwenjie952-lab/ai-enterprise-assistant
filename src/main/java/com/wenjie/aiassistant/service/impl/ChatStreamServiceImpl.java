@@ -50,10 +50,8 @@ public class ChatStreamServiceImpl implements ChatStreamService {
 
             sendEvent(emitter, "start", chatContext.getConversationId());
 
-            String finalReply = chatModelClient.streamChat(
-                    chatContext.getContextMessages(),
-                    chunk -> sendEvent(emitter, "message", chunk)
-            );
+            String finalReply = chatModelClient.streamChat(chatContext.getConversationId(), chatContext.getContextMessages(),
+                    chunk -> sendEvent(emitter, "message", chunk));
 
             ConversationLifecycleResult result = conversationLifecycleService.afterReply(chatContext, finalReply);
 

@@ -10,7 +10,7 @@
         /**
          * 调用聊天模型
          */
-        String chat(List<ChatMessageDTO> messages);
+        String chat(String conversationId, List<ChatMessageDTO> messages);
 
         /**
          * 调用模型生成会话摘要
@@ -24,7 +24,7 @@
          * @param chunkConsumer 每收到一个模型输出片段，就回调一次
          * @return 完整回复内容
          */
-        String streamChat(List<ChatMessageDTO> messages, Consumer<String> chunkConsumer);
+        String streamChat(String conversationId, List<ChatMessageDTO> messages, Consumer<String> chunkConsumer);
 
         /**
          * 根据用户第一条消息生成会话标题

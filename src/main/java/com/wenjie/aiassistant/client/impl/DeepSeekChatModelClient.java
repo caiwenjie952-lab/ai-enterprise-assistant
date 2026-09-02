@@ -35,7 +35,7 @@ public class DeepSeekChatModelClient implements ChatModelClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public String chat(List<ChatMessageDTO> messages) {
+    public String chat(String conversationId, List<ChatMessageDTO> messages) {
         long startTime = System.currentTimeMillis();
 
         try {
@@ -186,7 +186,7 @@ public class DeepSeekChatModelClient implements ChatModelClient {
     }
 
     @Override
-    public String streamChat(List<ChatMessageDTO> messages, Consumer<String> chunkConsumer) {
+    public String streamChat(String conversationId, List<ChatMessageDTO> messages, Consumer<String> chunkConsumer) {
         long startTime = System.currentTimeMillis();
 
         StringBuilder fullReply = new StringBuilder();
@@ -342,7 +342,7 @@ public class DeepSeekChatModelClient implements ChatModelClient {
 
         String cleaned = title.trim()
                 .replaceAll("[\"'“”‘’《》<>]", "")
-                .replaceAll("[。？?！!：:；;、，,\\.]", "")
+                .replaceAll("[。？?！!：:；;、，,.]", "")
                 .replaceAll("\\s+", "");
 
         if (cleaned.isBlank()) {
