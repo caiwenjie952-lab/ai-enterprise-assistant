@@ -48,4 +48,8 @@ public interface ConversationPersistenceService {
 
     ConversationDetailResponse getConversationDetail(String conversationId);
 
-    boolean deleteConversation(String conversationId);}
+    boolean deleteConversation(String conversationId);
+
+    List<ChatMessageDTO> findMessagesAfterIndex(String conversationId, int messageIndex, int limit);
+}
+

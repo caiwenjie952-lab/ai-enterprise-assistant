@@ -38,7 +38,6 @@ public class ChatContextBuilder {
 
         String summary = conversationMemoryService.getSummary(conversationId);
 
-        List<ChatMessageDTO> recentMessages = conversationMemoryService.getRecentMessages(conversationId, maxHistoryMessages);
 
         int userMessageIndex = conversationMemoryService.nextMessageIndex(conversationId);
 
@@ -50,10 +49,8 @@ public class ChatContextBuilder {
             contextMessages.add(new ChatMessageDTO(0, "system", "以下是本次会话的长期摘要，请结合它理解用户上下文：" + summary));
         }
 
-        contextMessages.add(currentUserMessage);
+        log.info("上下文构造完成，conversationId={}，summaryExists={}，userMessageIndex={}", conversationId, summary != null && !summary.isBlank(),userMessageIndex);
 
-        log.info("上下文构造完成，conversationId={}，summaryExists={}，recentMessages={}，userMessageIndex={}", conversationId, summary != null && !summary.isBlank(), recentMessages.size(), userMessageIndex);
-
-        return new ChatContext(conversationId, currentUserMessage, contextMessages, summary, recentMessages.size());
+        return new ChatContext(conversationId, currentUserMessage, contextMessages, summary);
     }
 }

@@ -158,6 +158,16 @@ public class ConversationPersistenceServiceImpl implements ConversationPersisten
         return true;
     }
 
+    @Override
+    public List<ChatMessageDTO> findMessagesAfterIndex(String conversationId, int messageIndex, int limit) {
+        List<AiChatMessageEntity> entities = aiChatMessageMapper.selectList(new LambdaQueryWrapper<AiChatMessageEntity>().
+                eq(AiChatMessageEntity::getConversationId, conversationId).gt(AiChatMessageEntity::getMessageIndex, messageIndex).
+                orderByAsc(AiChatMessageEntity::getMessageIndex).
+                last("LIMIT " + limit));
+
+        return entities.stream().map(entity -> new ChatMessageDTO(entity.getMessageIndex(), entity.getRole(), entity.getContent())).toList();
+    }
+
     private Long toTimestamp(LocalDateTime time) {
         if (time == null) {
             return null;

@@ -42,10 +42,9 @@ public class ChatStreamServiceImpl implements ChatStreamService {
         ChatContext chatContext = chatContextBuilder.build(request);
 
         try {
-            log.info("Received stream chat request, conversationId={}, contextMessages={}, recentMessages={}, hasSummary={}",
+            log.info("Received stream chat request, conversationId={}, contextMessages={}, hasSummary={}",
                     chatContext.getConversationId(),
                     chatContext.getContextMessages().size(),
-                    chatContext.getRecentMessageCount(),
                     chatContext.getSummary() != null && !chatContext.getSummary().isBlank());
 
             sendEvent(emitter, "start", chatContext.getConversationId());

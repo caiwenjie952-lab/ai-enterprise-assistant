@@ -20,5 +20,4 @@ public class ChatContext {
 
     private String summary;
 
-    private Integer recentMessageCount;
 }

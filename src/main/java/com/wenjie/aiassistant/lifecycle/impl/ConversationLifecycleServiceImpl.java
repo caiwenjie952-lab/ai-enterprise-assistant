@@ -37,8 +37,6 @@ public class ConversationLifecycleServiceImpl implements ConversationLifecycleSe
 
         List<ChatMessageDTO> newMessages = List.of(userMessage, assistantMessage);
 
-        // 2. 写入 Memory
-        conversationMemoryService.addMessages(conversationId, newMessages);
 
         // 3. 确保数据库中存在会话主记录
         conversationPersistenceService.ensureConversation(conversationId);
@@ -82,8 +80,8 @@ public class ConversationLifecycleServiceImpl implements ConversationLifecycleSe
         boolean reachedInterval = currentMessageIndex - lastSummaryMessageIndex >= interval;
 
         if (reachedTrigger && reachedInterval) {
-            List<ChatMessageDTO> messagesToSummarize = conversationMemoryService.getMessagesAfterIndex(conversationId, lastSummaryMessageIndex, maxSummaryMessages);
-
+            List<ChatMessageDTO> messagesToSummarize = conversationPersistenceService.findMessagesAfterIndex(
+                    conversationId, lastSummaryMessageIndex, maxSummaryMessages);
             if (!messagesToSummarize.isEmpty()) {
                 String newSummary = chatModelClient.summarize(summary, messagesToSummarize);
 
@@ -102,12 +100,6 @@ public class ConversationLifecycleServiceImpl implements ConversationLifecycleSe
                 }
             }
         }
-
-        // 8. 内存裁剪
-        Integer maxMemoryMessages = aiProperties.getMaxMemoryMessages();
-        int maxMemory = maxMemoryMessages == null ? 50 : maxMemoryMessages;
-
-        conversationMemoryService.trimMessages(conversationId, maxMemory);
 
         // 9. 更新时间
         conversationMemoryService.touchConversation(conversationId);

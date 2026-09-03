@@ -7,35 +7,13 @@ import java.util.List;
 
 public interface ConversationMemoryService {
 
-    /**
-     * 获取当前会话内存中的全部消息
-     */
-    List<ChatMessageDTO> getMessages(String conversationId);
 
     /**
      * 获取最近 N 条消息
      */
     List<ChatMessageDTO> getRecentMessages(String conversationId, int limit);
 
-    /**
-     * 获取 messageIndex 大于指定值的消息
-     */
-    List<ChatMessageDTO> getMessagesAfterIndex(String conversationId, int messageIndex, int limit);
 
-    /**
-     * 添加单条消息
-     */
-    void addMessage(String conversationId, ChatMessageDTO message);
-
-    /**
-     * 添加多条消息
-     */
-    void addMessages(String conversationId, List<ChatMessageDTO> messages);
-
-    /**
-     * 当前内存消息数量
-     */
-    int countMessages(String conversationId);
 
     /**
      * 获取下一个消息编号
@@ -81,11 +59,6 @@ public interface ConversationMemoryService {
      * 当前会话是否已有标题
      */
     boolean hasTitle(String conversationId);
-
-    /**
-     * 裁剪内存消息
-     */
-    void trimMessages(String conversationId, int limit);
 
     /**
      * 清空当前会话全部内存状态

@@ -50,10 +50,6 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
     private final ConcurrentHashMap<String, Long> conversationUpdateTimeMemory = new ConcurrentHashMap<>();
 
 
-    @Override
-    public List<ChatMessageDTO> getMessages(String conversationId) {
-        return new ArrayList<>(memory.getOrDefault(conversationId, new ArrayList<>()));
-    }
 
 
     @Override
@@ -75,43 +71,6 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
         return new ArrayList<>(sortedMessages.subList(fromIndex, sortedMessages.size()));
     }
 
-
-    @Override
-    public List<ChatMessageDTO> getMessagesAfterIndex(String conversationId, int messageIndex, int limit) {
-        if (limit <= 0) {
-            return new ArrayList<>();
-        }
-
-        List<ChatMessageDTO> messages = memory.getOrDefault(conversationId, new ArrayList<>());
-
-        return messages.stream().filter(message -> message.getMessageIndex() != null).filter(message -> message.getMessageIndex() > messageIndex).sorted(Comparator.comparing(ChatMessageDTO::getMessageIndex)).limit(limit).toList();
-    }
-
-
-    @Override
-    public void addMessage(String conversationId, ChatMessageDTO message) {
-        memory.computeIfAbsent(conversationId, key -> new ArrayList<>()).add(message);
-
-        touchConversation(conversationId);
-    }
-
-
-    @Override
-    public void addMessages(String conversationId, List<ChatMessageDTO> messages) {
-        if (messages == null || messages.isEmpty()) {
-            return;
-        }
-
-        memory.computeIfAbsent(conversationId, key -> new ArrayList<>()).addAll(messages);
-
-        touchConversation(conversationId);
-    }
-
-
-    @Override
-    public int countMessages(String conversationId) {
-        return memory.getOrDefault(conversationId, new ArrayList<>()).size();
-    }
 
 
     @Override
@@ -183,27 +142,6 @@ public class InMemoryConversationMemoryServiceImpl implements ConversationMemory
         return title != null && !title.isBlank();
     }
 
-
-    @Override
-    public void trimMessages(String conversationId, int limit) {
-        if (limit <= 0) {
-            return;
-        }
-
-        List<ChatMessageDTO> messages = memory.get(conversationId);
-
-        if (messages == null || messages.size() <= limit) {
-            return;
-        }
-
-        List<ChatMessageDTO> sortedMessages = messages.stream().filter(message -> message.getMessageIndex() != null).sorted(Comparator.comparing(ChatMessageDTO::getMessageIndex)).toList();
-
-        int fromIndex = Math.max(sortedMessages.size() - limit, 0);
-
-        List<ChatMessageDTO> recentMessages = new ArrayList<>(sortedMessages.subList(fromIndex, sortedMessages.size()));
-
-        memory.put(conversationId, recentMessages);
-    }
 
 
     @Override
